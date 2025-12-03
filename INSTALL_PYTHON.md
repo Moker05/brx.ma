@@ -1,4 +1,4 @@
-# 🐍 Guide d'Installation Python pour Windows
+  # 🐍 Guide d'Installation Python pour Windows
 
 ## Option 1 : Microsoft Store (Recommandé - Plus Simple)
 

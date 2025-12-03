@@ -1,0 +1,502 @@
+// BRX.MA - Prisma Schema
+// Database schema for Bourse de Casablanca platform
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model
+model User {
+  id            String      @id @default(uuid())
+  email         String      @unique
+  password      String      // bcrypt hashed
+  name          String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  portfolios    Portfolio[]
+  watchlists    Watchlist[]
+  virtualWallet VirtualWallet?
+
+  // Social Trading Relations
+  profile       UserProfile?
+  ratingsGiven  UserRating[] @relation("RatingsGiven")
+
+  @@map("users")
+}
+
+// Portfolio model
+model Portfolio {
+  id          String              @id @default(uuid())
+  userId      String
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+
+  positions   PortfolioPosition[]
+
+  @@index([userId])
+  @@map("portfolios")
+}
+
+// Portfolio position (stocks, crypto, OPCVM)
+model PortfolioPosition {
+  id            String      @id @default(uuid())
+  portfolioId   String
+  portfolio     Portfolio   @relation(fields: [portfolioId], references: [id], onDelete: Cascade)
+
+  symbol        String      // ATW, BCP, BTC, ETH, etc.
+  type          AssetType   // STOCK, CRYPTO, OPCVM
+  market        Market      // BVC, CRYPTO, etc.
+
+  quantity      Float
+  purchasePrice Float
+  purchaseDate  DateTime
+
+  notes         String?
+
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([portfolioId])
+  @@index([symbol, type])
+  @@map("portfolio_positions")
+}
+
+// Stock information
+model Stock {
+  symbol        String        @id
+  name          String
+  sector        String?
+  industry      String?
+  market        Market        @default(BVC)
+
+  lastPrice     Float?
+  lastUpdate    DateTime?
+
+  description   String?
+  website       String?
+
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  prices        StockPrice[]
+
+  @@index([market])
+  @@index([sector])
+  @@map("stocks")
+}
+
+// Stock price history
+model StockPrice {
+  id          String      @id @default(uuid())
+  symbol      String
+  stock       Stock       @relation(fields: [symbol], references: [symbol], onDelete: Cascade)
+
+  open        Float
+  high        Float
+  low         Float
+  close       Float
+  volume      Float
+
+  timestamp   DateTime
+  createdAt   DateTime    @default(now())
+
+  @@unique([symbol, timestamp])
+  @@index([symbol, timestamp(sort: Desc)])
+  @@map("stock_prices")
+}
+
+// Cryptocurrency information
+model Cryptocurrency {
+  id                String           @id // CoinGecko ID (bitcoin, ethereum, etc.)
+  symbol            String           @unique // BTC, ETH, etc.
+  name              String           // Bitcoin, Ethereum, etc.
+
+  currentPrice      Float?
+  marketCap         Float?
+  marketCapRank     Int?
+  totalVolume       Float?
+
+  priceChange24h    Float?
+  priceChangePercent24h Float?
+  priceChangePercent7d  Float?
+  priceChangePercent30d Float?
+
+  high24h           Float?
+  low24h            Float?
+
+  circulatingSupply Float?
+  totalSupply       Float?
+  maxSupply         Float?
+
+  ath               Float?           // All-time high
+  athDate           DateTime?
+  atl               Float?           // All-time low
+  atlDate           DateTime?
+
+  image             String?          // Logo URL
+  lastUpdate        DateTime?
+
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  prices            CryptoPrice[]
+
+  @@index([marketCapRank])
+  @@index([symbol])
+  @@map("cryptocurrencies")
+}
+
+// Cryptocurrency price history
+model CryptoPrice {
+  id              String           @id @default(uuid())
+  cryptoId        String
+  crypto          Cryptocurrency   @relation(fields: [cryptoId], references: [id], onDelete: Cascade)
+
+  price           Float
+  marketCap       Float?
+  volume          Float?
+
+  timestamp       DateTime
+  createdAt       DateTime         @default(now())
+
+  @@unique([cryptoId, timestamp])
+  @@index([cryptoId, timestamp(sort: Desc)])
+  @@map("crypto_prices")
+}
+
+// Watchlist (favorite stocks/crypto)
+model Watchlist {
+  id          String      @id @default(uuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  symbol      String
+  type        AssetType
+  market      Market
+
+  createdAt   DateTime    @default(now())
+
+  @@unique([userId, symbol, type])
+  @@index([userId])
+  @@map("watchlists")
+}
+
+// Price alerts
+model PriceAlert {
+  id          String        @id @default(uuid())
+  userId      String
+
+  symbol      String
+  type        AssetType
+  market      Market
+
+  condition   AlertCondition  // ABOVE, BELOW
+  targetPrice Float
+
+  isActive    Boolean       @default(true)
+  isTriggered Boolean       @default(false)
+  triggeredAt DateTime?
+
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([userId, isActive])
+  @@index([symbol, isActive])
+  @@map("price_alerts")
+}
+
+// Enums
+enum AssetType {
+  STOCK   // Actions BVC
+  CRYPTO  // Crypto-monnaies
+  OPCVM   // OPCVM (fonds)
+  INDEX   // Indices (MASI, MADEX)
+}
+
+enum Market {
+  BVC     // Bourse de Casablanca
+  CRYPTO  // Crypto exchanges
+  OTHER   // Other markets
+}
+
+enum AlertCondition {
+  ABOVE   // Price goes above target
+  BELOW   // Price goes below target
+}
+
+// Virtual Wallet for paper trading
+model VirtualWallet {
+  id          String        @id @default(uuid())
+  userId      String        @unique
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  balance     Float         @default(100000) // Solde initial fictif (MAD)
+  currency    String        @default("MAD")
+
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  transactions Transaction[]
+  positions    Position[]
+
+  @@map("virtual_wallets")
+}
+
+// Trading transaction history
+model Transaction {
+  id            String          @id @default(uuid())
+  walletId      String
+  wallet        VirtualWallet   @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  type          TransactionType // BUY or SELL
+  symbol        String          // BTC, ETH, ATW, etc.
+  assetType     AssetType       // STOCK, CRYPTO, OPCVM
+  market        Market          // BVC, CRYPTO
+
+  quantity      Float
+  price         Float           // Prix unitaire au moment de la transaction
+  totalAmount   Float           // quantity * price
+  fee           Float           @default(0) // Frais de transaction (optionnel)
+
+  // Additional fields for enhanced tracking
+  purchaseDate  DateTime?       // Date d'achat (pour référence)
+  sellPrice     Float?          // Prix de vente (si type = SELL)
+  realizedPnL   Float?          // PnL réalisé lors de la vente
+  notes         String?         // Notes optionnelles
+
+  timestamp     DateTime        @default(now())
+
+  @@index([walletId])
+  @@index([symbol, assetType])
+  @@index([timestamp(sort: Desc)])
+  @@map("transactions")
+}
+
+// Current positions in virtual wallet
+model Position {
+  id                String        @id @default(uuid())
+  walletId          String
+  wallet            VirtualWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  symbol            String
+  assetType         AssetType
+  market            Market
+
+  quantity          Float         // Quantité détenue
+  avgPurchasePrice  Float         // Prix moyen d'achat
+  totalInvested     Float         // Total investi (quantity * avgPurchasePrice)
+  purchaseDate      DateTime      @default(now()) // Date d'achat initiale
+
+  // Ces champs seront calculés dynamiquement via le backend
+  currentPrice      Float?        // Prix actuel (mis à jour)
+  currentValue      Float?        // Valeur actuelle (quantity * currentPrice)
+  profitLoss        Float?        // Profit/Perte (currentValue - totalInvested)
+  profitLossPercent Float?        // Profit/Perte en % ((currentValue - totalInvested) / totalInvested * 100)
+
+  // Enhanced fields
+  name              String?       // Nom complet de l'actif
+  notes             String?       // Notes personnelles
+
+  lastUpdated       DateTime?     // Dernière mise à jour des prix
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  @@unique([walletId, symbol, assetType])
+  @@index([walletId])
+  @@index([symbol, assetType])
+  @@map("positions")
+}
+
+// Portfolio valuation history (pour le graphique de suivi)
+model PortfolioSnapshot {
+  id              String        @id @default(uuid())
+  walletId        String
+
+  totalValue      Float         // Valeur totale (balance + positions)
+  availableBalance Float        // Solde disponible
+  investedValue   Float         // Valeur investie
+  profitLoss      Float         // PnL total
+  profitLossPercent Float       // PnL en %
+
+  timestamp       DateTime      @default(now())
+
+  @@index([walletId, timestamp(sort: Desc)])
+  @@map("portfolio_snapshots")
+}
+
+// Transaction type enum
+enum TransactionType {
+  BUY
+  SELL
+}
+
+// ============================================
+// SOCIAL TRADING MODULE
+// ============================================
+
+model UserProfile {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Public profile
+  displayName     String?
+  bio             String?  @db.Text
+  avatar          String?
+  isPublic        Boolean  @default(true)
+  
+  // Trading stats
+  totalPnL        Float    @default(0)
+  totalTrades     Int      @default(0)
+  winRate         Float    @default(0)
+  bestTrade       Float    @default(0)
+  worstTrade      Float    @default(0)
+  
+  // Rating system (1-5 stars)
+  rating          Float    @default(0)
+  ratingCount     Int      @default(0)
+  
+  // Tier system
+  tier            String   @default("BRONZE") // BRONZE, SILVER, GOLD, PLATINUM, DIAMOND
+  verified        Boolean  @default(false)
+  
+  // Stats
+  followersCount  Int      @default(0)
+  followingCount  Int      @default(0)
+  
+  // Relations
+  posts           Post[]
+  comments        Comment[]
+  likes           Like[]
+  followers       Follow[] @relation("UserFollowers")
+  following       Follow[] @relation("UserFollowing")
+  ratings         UserRating[]
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@index([userId])
+  @@index([tier])
+  @@index([rating])
+}
+
+model Follow {
+  id          String   @id @default(cuid())
+  followerId  String
+  followingId String
+  
+  follower    UserProfile @relation("UserFollowers", fields: [followerId], references: [id], onDelete: Cascade)
+  following   UserProfile @relation("UserFollowing", fields: [followingId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  
+  @@unique([followerId, followingId])
+  @@index([followerId])
+  @@index([followingId])
+}
+
+model Post {
+  id          String   @id @default(cuid())
+  userId      String
+  user        UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Content
+  symbol      String   // ATW, BCP, BTC, etc.
+  assetType   String   // STOCK, CRYPTO, OPCVM
+  content     String   @db.Text
+  sentiment   String?  // BULLISH, BEARISH, NEUTRAL
+  
+  // Target price (optional)
+  targetPrice Float?
+  
+  // Engagement
+  likesCount    Int      @default(0)
+  commentsCount Int      @default(0)
+  viewsCount    Int      @default(0)
+  
+  // Relations
+  comments    Comment[]
+  likes       Like[]
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([userId])
+  @@index([symbol])
+  @@index([createdAt])
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  postId    String
+  post      Post     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  userId    String
+  user      UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  content   String   @db.Text
+  
+  // Nested comments
+  parentId  String?
+  
+  // Engagement
+  likesCount Int     @default(0)
+  likes      Like[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([postId])
+  @@index([userId])
+  @@index([parentId])
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  userId    String
+  user      UserProfile @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Polymorphic like (post or comment)
+  postId    String?
+  post      Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  
+  commentId String?
+  comment   Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  
+  createdAt DateTime @default(now())
+  
+  @@unique([userId, postId])
+  @@unique([userId, commentId])
+  @@index([userId])
+  @@index([postId])
+  @@index([commentId])
+}
+
+model UserRating {
+  id        String   @id @default(cuid())
+  raterId   String
+  ratedId   String
+  
+  rater     User     @relation("RatingsGiven", fields: [raterId], references: [id], onDelete: Cascade)
+  rated     UserProfile @relation(fields: [ratedId], references: [id], onDelete: Cascade)
+  
+  rating    Int      // 1-5 stars
+  comment   String?  @db.Text
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@unique([raterId, ratedId])
+  @@index([ratedId])
+}
+
+// NOTE: Keep existing User model and just add relation there separately

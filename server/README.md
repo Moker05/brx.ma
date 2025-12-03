@@ -69,6 +69,8 @@ Le serveur sera accessible sur `http://localhost:5000`
 - `GET /api/stocks` - Liste de toutes les actions
 - `GET /api/stocks/:symbol` - Détails d'une action
 - `GET /api/stocks/:symbol/history` - Historique des prix
+### Crypto
+ - `GET /api/crypto/:id/history` - Historical market data (market_chart)
 
 ## 🗄️ Structure de la base de données
 

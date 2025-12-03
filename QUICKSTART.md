@@ -1,98 +1,51 @@
-# 🚀 GUIDE DE DÉMARRAGE RAPIDE - BRX.MA
+# 🚀 Guide de Démarrage Rapide - BRX.MA Portfolio
 
-## ✅ PHASE 1 COMPLÉTÉE - Architecture & Setup Initial
+## ✅ Réparations Effectuées
 
-Félicitations ! La Phase 1 est terminée. Voici ce qui a été créé :
+Tous les problèmes du portefeuille ont été corrigés :
 
-### 📦 Structure du projet
-```
-brx.ma/
-├── client/              ✅ Frontend React
-├── server/              ✅ Backend Node.js/Express
-├── README.md            ✅ Documentation principale
-└── .gitignore           ✅ Configuration Git
-```
+- ✅ **Prisma réactivé** - Base de données opérationnelle
+- ✅ **Historique du portefeuille** - Snapshots automatiques après chaque transaction
+- ✅ **Mise à jour des prix** - Rafraîchissement automatique toutes les 2 minutes
+- ✅ **Gestion des transactions** - AddPosition crée maintenant des transactions et déduit le solde
+- ✅ **Configuration PostgreSQL** - Migration de SQLite vers PostgreSQL
 
----
+## 📋 Installation PostgreSQL
 
-## 🛠️ INSTALLATION COMPLÈTE
+### Méthode 1 : Automatique (Recommandé)
 
-### 1️⃣ Installation de PostgreSQL
+Double-cliquez sur `INSTALL_POSTGRES_WINDOWS.bat` ou exécutez dans PowerShell:
 
-#### Sur Ubuntu/Debian :
-```bash
-sudo apt update
-sudo apt install postgresql postgresql-contrib
-sudo systemctl start postgresql
-sudo systemctl enable postgresql
+```powershell
+.\setup-database.ps1
 ```
 
-#### Sur macOS :
-```bash
-brew install postgresql@14
-brew services start postgresql@14
-```
+### Méthode 2 : Manuelle
 
-#### Sur Windows :
-Télécharger et installer depuis : https://www.postgresql.org/download/windows/
+1. **Installer PostgreSQL**
+   ```powershell
+   winget install PostgreSQL.PostgreSQL
+   ```
 
-### 2️⃣ Configuration de la base de données
+2. **Créer la base de données** (après installation, rouvrir PowerShell)
+   ```powershell
+   psql -U postgres
+   ```
 
-```bash
-# Se connecter à PostgreSQL
-sudo -u postgres psql
+   Puis dans psql:
+   ```sql
+   CREATE DATABASE brx_db;
+   CREATE USER brx_user WITH PASSWORD 'brx_admin';
+   GRANT ALL PRIVILEGES ON DATABASE brx_db TO brx_user;
+   \q
+   ```
 
-# Dans psql, exécuter :
-CREATE DATABASE brx_db;
-CREATE USER brx_user WITH ENCRYPTED PASSWORD 'VotreMotDePasse123!';
-GRANT ALL PRIVILEGES ON DATABASE brx_db TO brx_user;
-\c brx_db
-GRANT ALL ON SCHEMA public TO brx_user;
-\q
-```
-
-### 3️⃣ Installation du Backend
-
-```bash
-cd brx.ma/server
-
-# Installer les dépendances
-npm install
-
-# Créer le fichier .env
-cp .env.example .env
-
-# Éditer .env avec vos paramètres
-nano .env  # ou code .env
-```
-
-**Fichier .env à configurer :**
-```env
-NODE_ENV=development
-PORT=5000
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=brx_db
-DB_USER=brx_user
-DB_PASSWORD=VotreMotDePasse123!
-JWT_SECRET=changez_cette_clé_secrète_en_production_123456789
-CORS_ORIGIN=http://localhost:3000
-```
-
-### 4️⃣ Installation du Frontend
-
-```bash
-cd ../client
-
-# Installer les dépendances
-npm install
-
-# Créer le fichier .env
-cp .env.example .env
-
-# Le fichier .env devrait contenir :
-REACT_APP_API_URL=http://localhost:5000/api
-```
+3. **Configurer Prisma**
+   ```bash
+   cd server
+   npx prisma generate
+   npx prisma migrate dev --name init
+   ```
 
 ---
 

@@ -31,7 +31,8 @@ logs/
 
 # IDEs and editors
 .idea/
-.vscode/
+.vscode/launch.json
+.vscode/extensions.json
 *.swp
 *.swo
 *~

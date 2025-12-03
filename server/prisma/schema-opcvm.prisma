@@ -1,0 +1,70 @@
+// OPCVM model reference (not applied to the main schema by default)
+// Keep existing schema.prisma untouched; this file documents the desired structure.
+
+model OPCVM {
+  id                   String         @id @default(cuid())
+  name                 String         // Nom du fonds
+  isin                 String?        @unique // Code ISIN
+  managementCompany    String         // Societe de gestion
+  category             OPCVMCategory  // Categorie
+  subCategory          String?        // Sous-categorie
+
+  // Valeur Liquidative
+  currentVL            Float          // VL actuelle
+  previousVL           Float?         // VL precedente
+  vlDate               DateTime       // Date de la VL
+
+  // Performance
+  return1Year          Float?         // Rendement 1 an (%)
+  return3Years         Float?         // Rendement 3 ans (%)
+  return5Years         Float?         // Rendement 5 ans (%)
+  returnSinceInception Float?         // Rendement depuis creation (%)
+
+  // Variation
+  dailyChange          Float?         // Variation journaliere (%)
+  weeklyChange         Float?         // Variation hebdomadaire (%)
+  monthlyChange        Float?         // Variation mensuelle (%)
+
+  // Informations
+  riskLevel            Int            // Niveau de risque (1-7)
+  managementFee        Float          // Frais de gestion annuels (%)
+  minSubscription      Float          // Montant minimum de souscription (MAD)
+  inceptionDate        DateTime       // Date de creation
+
+  // Donnees historiques
+  assetValue           Float?         // Actif net (MAD)
+  numberOfShares       Float?         // Nombre de parts
+
+  // Metadata
+  description          String?        @db.Text
+  isActive             Boolean        @default(true)
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+
+  // Relations
+  historicalVL         OPCVMHistory[]
+
+  @@index([category])
+  @@index([managementCompany])
+  @@index([return1Year])
+}
+
+enum OPCVMCategory {
+  ACTIONS       // Actions
+  OBLIGATIONS   // Obligations
+  MONETAIRE     // Monetaire
+  DIVERSIFIE    // Diversifie
+  CONTRACTUEL   // Contractuel
+  ALTERNATIF    // Alternatif
+}
+
+model OPCVMHistory {
+  id      String   @id @default(cuid())
+  opcvmId String
+  vl      Float    // Valeur Liquidative
+  date    DateTime
+
+  opcvm   OPCVM    @relation(fields: [opcvmId], references: [id], onDelete: Cascade)
+
+  @@index([opcvmId, date])
+}
