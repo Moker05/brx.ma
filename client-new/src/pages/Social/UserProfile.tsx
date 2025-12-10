@@ -1,4 +1,4 @@
-import React from 'react';
+// React default import not required with the automatic JSX runtime
 import { useParams } from 'react-router-dom';
 import { useUserProfile } from '../../hooks/useSocial';
 import { UserAvatar } from '../../components/social/UserAvatar';

@@ -1,0 +1,102 @@
+### BRX.MA Authentication Tests
+### Base URL
+@baseUrl = http://localhost:5000
+@testEmail = test@brx.ma
+@testPassword = Password123!
+@demoEmail = demo@brx.ma
+
+### ============================================
+### 1. LOGIN - Test User
+### ============================================
+# @name loginTest
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{testEmail}}",
+  "password": "{{testPassword}}"
+}
+
+### ============================================
+### 2. LOGIN - Demo User
+### ============================================
+# @name loginDemo
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{demoEmail}}",
+  "password": "{{testPassword}}"
+}
+
+### ============================================
+### 3. GET CURRENT USER (Test User)
+### ============================================
+@accessToken = {{loginTest.response.body.data.accessToken}}
+GET {{baseUrl}}/api/auth/me
+Authorization: Bearer {{accessToken}}
+
+### ============================================
+### 4. REFRESH TOKEN
+### ============================================
+@refreshToken = {{loginTest.response.body.data.refreshToken}}
+POST {{baseUrl}}/api/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### ============================================
+### 5. REGISTER NEW USER
+### ============================================
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "newuser@brx.ma",
+  "password": "NewPassword123!",
+  "name": "New User"
+}
+
+### ============================================
+### 6. FORGOT PASSWORD
+### ============================================
+POST {{baseUrl}}/api/auth/forgot-password
+Content-Type: application/json
+
+{
+  "email": "{{testEmail}}"
+}
+
+### ============================================
+### 7. LOGOUT
+### ============================================
+POST {{baseUrl}}/api/auth/logout
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### ============================================
+### 8. VERIFY EMAIL (copy token from console logs)
+### ============================================
+POST {{baseUrl}}/api/auth/verify-email
+Content-Type: application/json
+
+{
+  "token": "PASTE_TOKEN_FROM_LOGS_HERE"
+}
+
+### ============================================
+### 9. RESET PASSWORD (copy token from console logs)
+### ============================================
+POST {{baseUrl}}/api/auth/reset-password
+Content-Type: application/json
+
+{
+  "token": "PASTE_TOKEN_FROM_LOGS_HERE",
+  "password": "BrandNewPassword123!"
+}

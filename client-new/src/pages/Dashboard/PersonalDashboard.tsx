@@ -1,6 +1,6 @@
 import { getUserDashboardData } from '../../services/userDataService';
 import { useAuth } from '../../context/AuthContext';
-import { FiTrendingUp, FiTrendingDown } from 'react-icons/fi';
+// icons removed (unused)
 
 const formatChange = (value: number) => `${value >= 0 ? '+' : ''}${value.toFixed(2)}%`;
 

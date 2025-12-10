@@ -1,5 +1,5 @@
 import { Router, Request, Response } from 'express';
-import { prisma } from '../index';
+import { prisma } from '../utils/prisma';
 import { z } from 'zod';
 
 const router = Router();
@@ -23,7 +23,7 @@ const sellSchema = z.object({
 });
 
 // GET /api/trading/wallet/:userId - Get user's virtual wallet with positions
-router.get('/wallet/:userId', async (req: Request, res: Response) => {
+router.get('/wallet/:userId', async (req: Request, res: Response): Promise<void> => {
   try {
     const { userId } = req.params;
 
@@ -55,8 +55,8 @@ router.get('/wallet/:userId', async (req: Request, res: Response) => {
     }
 
     // Calculate total portfolio value
-    const totalInvested = wallet.positions.reduce((sum, pos) => sum + pos.totalInvested, 0);
-    const totalCurrentValue = wallet.positions.reduce((sum, pos) => sum + (pos.currentValue || 0), 0);
+    const totalInvested = wallet.positions.reduce((sum: number, pos: any) => sum + pos.totalInvested, 0);
+    const totalCurrentValue = wallet.positions.reduce((sum: number, pos: any) => sum + (pos.currentValue || 0), 0);
     const totalProfitLoss = totalCurrentValue - totalInvested;
     const totalProfitLossPercent = totalInvested > 0 ? (totalProfitLoss / totalInvested) * 100 : 0;
 
@@ -74,6 +74,7 @@ router.get('/wallet/:userId', async (req: Request, res: Response) => {
         },
       },
     });
+    return;
   } catch (error) {
     console.error('Error fetching wallet:', error);
     res.status(500).json({ success: false, message: 'Error fetching wallet' });
@@ -81,7 +82,7 @@ router.get('/wallet/:userId', async (req: Request, res: Response) => {
 });
 
 // POST /api/trading/buy - Execute buy order
-router.post('/buy', async (req: Request, res: Response) => {
+router.post('/buy', async (req: Request, res: Response): Promise<void> => {
   try {
     // Validate request body
     const validatedData = buySchema.parse(req.body);
@@ -104,10 +105,11 @@ router.post('/buy', async (req: Request, res: Response) => {
 
     // Check if user has enough balance
     if (wallet.balance < totalCost) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: `Insufficient balance. Required: ${totalCost.toFixed(2)} MAD, Available: ${wallet.balance.toFixed(2)} MAD`,
       });
+      return;
     }
 
     // Execute transaction in Prisma transaction
@@ -192,9 +194,11 @@ router.post('/buy', async (req: Request, res: Response) => {
       message: `Successfully bought ${quantity} ${symbol}`,
       data: result,
     });
+    return;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ success: false, message: 'Invalid request data', errors: error.errors });
+      res.status(400).json({ success: false, message: 'Invalid request data', errors: error.issues });
+      return;
     }
     console.error('Error executing buy order:', error);
     res.status(500).json({ success: false, message: 'Error executing buy order' });
@@ -202,7 +206,7 @@ router.post('/buy', async (req: Request, res: Response) => {
 });
 
 // POST /api/trading/sell - Execute sell order
-router.post('/sell', async (req: Request, res: Response) => {
+router.post('/sell', async (req: Request, res: Response): Promise<void> => {
   try {
     // Validate request body
     const validatedData = sellSchema.parse(req.body);
@@ -218,7 +222,8 @@ router.post('/sell', async (req: Request, res: Response) => {
     });
 
     if (!wallet) {
-      return res.status(404).json({ success: false, message: 'Wallet not found' });
+      res.status(404).json({ success: false, message: 'Wallet not found' });
+      return;
     }
 
     // Get position
@@ -233,15 +238,17 @@ router.post('/sell', async (req: Request, res: Response) => {
     });
 
     if (!position) {
-      return res.status(404).json({ success: false, message: `No position found for ${symbol}` });
+      res.status(404).json({ success: false, message: `No position found for ${symbol}` });
+      return;
     }
 
     // Check if user has enough quantity
     if (position.quantity < quantity) {
-      return res.status(400).json({
+      res.status(400).json({
         success: false,
         message: `Insufficient quantity. Required: ${quantity}, Available: ${position.quantity}`,
       });
+      return;
     }
 
     // Execute transaction
@@ -302,9 +309,11 @@ router.post('/sell', async (req: Request, res: Response) => {
       message: `Successfully sold ${quantity} ${symbol}`,
       data: result,
     });
+    return;
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return res.status(400).json({ success: false, message: 'Invalid request data', errors: error.errors });
+      res.status(400).json({ success: false, message: 'Invalid request data', errors: error.issues });
+      return;
     }
     console.error('Error executing sell order:', error);
     res.status(500).json({ success: false, message: 'Error executing sell order' });
@@ -312,7 +321,7 @@ router.post('/sell', async (req: Request, res: Response) => {
 });
 
 // GET /api/trading/transactions/:userId - Get transaction history
-router.get('/transactions/:userId', async (req: Request, res: Response) => {
+router.get('/transactions/:userId', async (req: Request, res: Response): Promise<void> => {
   try {
     const { userId } = req.params;
     const { limit = '50', offset = '0' } = req.query;
@@ -322,7 +331,8 @@ router.get('/transactions/:userId', async (req: Request, res: Response) => {
     });
 
     if (!wallet) {
-      return res.status(404).json({ success: false, message: 'Wallet not found' });
+      res.status(404).json({ success: false, message: 'Wallet not found' });
+      return;
     }
 
     const transactions = await prisma.transaction.findMany({

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { CreatePostForm } from '../../components/social/CreatePostForm';
 import PostCard from '../../components/social/PostCard';
 import { usePostsBySymbol, useLikePost } from '../../hooks/useSocial';
@@ -6,7 +6,7 @@ import { usePostsBySymbol, useLikePost } from '../../hooks/useSocial';
 export function CommunityFeed() {
   const [filter, setFilter] = useState<string | undefined>(undefined);
   const [page, setPage] = useState(1);
-  const { data: posts = [], isLoading } = usePostsBySymbol(filter, page);
+  const { data: posts = [] as any[], isLoading } = usePostsBySymbol(filter, page);
   const likeMutation = useLikePost();
 
   return (

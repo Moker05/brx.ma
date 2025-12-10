@@ -5,7 +5,6 @@ export function usePostsBySymbol(symbol?: string, page = 1) {
   return useQuery({
     queryKey: ['posts', symbol, page],
     queryFn: () => socialAPI.getPostsBySymbol(symbol || '', page),
-    keepPreviousData: true,
   });
 }
 

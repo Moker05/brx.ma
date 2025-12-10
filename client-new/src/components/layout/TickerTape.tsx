@@ -59,7 +59,7 @@ export const TickerTape = () => {
           {/* Duplicate items for seamless loop */}
           {[...tickerItems, ...tickerItems].map((item, index) => (
             <div
-              key={`${item.symbol}-${index}`}
+              key={`ticker-${item.type}-${item.symbol}-${index}`}
               className="ticker-item flex items-center gap-3 px-6 py-2"
             >
               <div className="flex items-center gap-2">

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useLeaderboard } from '../../hooks/useSocial';
 
 export function Leaderboard() {

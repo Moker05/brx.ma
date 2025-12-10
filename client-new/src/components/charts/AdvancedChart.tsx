@@ -49,7 +49,7 @@ export const AdvancedChart = ({ data, height = 500, symbol = 'ATW' }: AdvancedCh
   const indicatorRefs = useRef<Map<string, ISeriesApi<'Line'>>>(new Map());
 
   const [mode, setMode] = useState<ChartMode>('candles');
-  const [activeTab, setActiveTab] = useState<TabType>('chart');
+  const [_activeTab, _setActiveTab] = useState<TabType>('chart');
   const [fullscreen, setFullscreen] = useState(false);
   const [hover, setHover] = useState<{ price: number; open: number; high: number; low: number; close: number; volume?: number; time: number | string } | null>(null);
   const [drawingMode, setDrawingMode] = useState<DrawingMode>('none');
@@ -91,7 +91,7 @@ export const AdvancedChart = ({ data, height = 500, symbol = 'ATW' }: AdvancedCh
     const timeScale = chartRef.current.timeScale();
     const priceScale = candleSeriesRef.current.priceScale();
 
-    const priceToY = (price: number) => priceScale.priceToCoordinate(price) ?? 0;
+    const priceToY = (price: number) => (priceScale as any).priceToCoordinate?.(price) ?? 0;
     const timeToX = (time: number) => timeScale.timeToCoordinate(time as any) ?? 0;
 
     ctx.lineWidth = 1.5;
@@ -202,7 +202,7 @@ export const AdvancedChart = ({ data, height = 500, symbol = 'ATW' }: AdvancedCh
     chart.subscribeClick((param: MouseEventParams) => {
       if (drawingMode === 'none') return;
       if (!param.time || !param.point) return;
-      const price = candleSeries.priceScale().coordinateToPrice(param.point.y);
+      const price = (candleSeries.priceScale() as any).coordinateToPrice?.(param.point.y);
       if (price === undefined || price === null) return;
       const time = param.time as number;
 
@@ -482,7 +482,7 @@ export const AdvancedChart = ({ data, height = 500, symbol = 'ATW' }: AdvancedCh
                 className={mode === 'candles' ? 'active' : ''}
                 onClick={() => {
                   setMode('candles');
-                  document.activeElement?.blur();
+                  (document.activeElement as HTMLElement | null)?.blur();
                 }}
               >
                 Chandeliers
@@ -493,7 +493,7 @@ export const AdvancedChart = ({ data, height = 500, symbol = 'ATW' }: AdvancedCh
                 className={mode === 'area' ? 'active' : ''}
                 onClick={() => {
                   setMode('area');
-                  document.activeElement?.blur();
+                  (document.activeElement as HTMLElement | null)?.blur();
                 }}
               >
                 Aire
@@ -504,7 +504,7 @@ export const AdvancedChart = ({ data, height = 500, symbol = 'ATW' }: AdvancedCh
                 className={mode === 'line' ? 'active' : ''}
                 onClick={() => {
                   setMode('line');
-                  document.activeElement?.blur();
+                  (document.activeElement as HTMLElement | null)?.blur();
                 }}
               >
                 Ligne
@@ -685,7 +685,7 @@ export const AdvancedChart = ({ data, height = 500, symbol = 'ATW' }: AdvancedCh
                     className={`btn btn-xs w-full justify-start ${drawingMode === 'none' ? 'btn-primary' : 'btn-ghost'}`}
                     onClick={() => {
                       setDrawingMode('none');
-                      document.activeElement?.blur();
+                      (document.activeElement as HTMLElement | null)?.blur();
                     }}
                   >
                     Désactivé
@@ -694,7 +694,7 @@ export const AdvancedChart = ({ data, height = 500, symbol = 'ATW' }: AdvancedCh
                     className={`btn btn-xs w-full justify-start ${drawingMode === 'horizontal' ? 'btn-primary' : 'btn-ghost'}`}
                     onClick={() => {
                       setDrawingMode('horizontal');
-                      document.activeElement?.blur();
+                      (document.activeElement as HTMLElement | null)?.blur();
                     }}
                   >
                     Ligne horizontale
@@ -703,7 +703,7 @@ export const AdvancedChart = ({ data, height = 500, symbol = 'ATW' }: AdvancedCh
                     className={`btn btn-xs w-full justify-start ${drawingMode === 'trend' ? 'btn-primary' : 'btn-ghost'}`}
                     onClick={() => {
                       setDrawingMode('trend');
-                      document.activeElement?.blur();
+                      (document.activeElement as HTMLElement | null)?.blur();
                     }}
                   >
                     Ligne de tendance
@@ -713,7 +713,7 @@ export const AdvancedChart = ({ data, height = 500, symbol = 'ATW' }: AdvancedCh
                     onClick={() => {
                       setDrawings([]);
                       setPendingTrend([]);
-                      document.activeElement?.blur();
+                      (document.activeElement as HTMLElement | null)?.blur();
                     }}
                   >
                     Effacer tout

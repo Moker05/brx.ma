@@ -18,6 +18,7 @@ import { StockDiscussion } from './pages/Social/StockDiscussion';
 import { UserProfile } from './pages/Social/UserProfile';
 import { Leaderboard } from './pages/Social/Leaderboard';
 import { MyProfile } from './pages/Social/MyProfile';
+import { StockDetail } from './pages/StockDetail';
 import { useThemeStore } from './stores/themeStore';
 import { OPCVM, OPCVMDetail } from './pages/OPCVM';
 
@@ -68,7 +69,8 @@ function App() {
                 </div>
               } />
                 <Route path="community" element={<CommunityFeed />} />
-                <Route path="stock/:symbol/discussion" element={<StockDiscussion />} />
+                <Route path="stock/:ticker/discussion" element={<StockDiscussion />} />
+                <Route path="stocks/:ticker" element={<StockDetail />} />
                 <Route path="users/:userId" element={<UserProfile />} />
                 <Route path="leaderboard" element={<Leaderboard />} />
               <Route element={<ProtectedRoute />}>

@@ -1,4 +1,5 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import type { FormEvent } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import type { OPCVM } from '../../services/opcvmAPI';
 import { useOPCVMSimulation } from '../../hooks/useOPCVM';

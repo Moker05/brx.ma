@@ -64,21 +64,24 @@ export const getHistory = async (req: Request, res: Response) => {
  * GET /api/crypto/prices
  * Get simple prices for multiple cryptocurrencies
  */
-export const getPrices = async (req: Request, res: Response) => {
+export const getPrices = async (req: Request, res: Response): Promise<void> => {
   try {
     const { ids, currency = 'usd' } = req.query;
 
     if (!ids) {
-      return res.status(400).json({ success: false, error: 'ids parameter is required' });
+      res.status(400).json({ success: false, error: 'ids parameter is required' });
+      return;
     }
 
     const coinIds = (ids as string).split(',');
     const data = await coinGeckoService.getSimplePrices(coinIds, currency as string);
 
     res.json({ success: true, data });
+    return;
   } catch (error: any) {
     console.error('Error in getPrices:', error);
     res.status(500).json({ success: false, error: error.message });
+    return;
   }
 };
 
@@ -86,19 +89,22 @@ export const getPrices = async (req: Request, res: Response) => {
  * GET /api/crypto/search
  * Search cryptocurrencies
  */
-export const searchCrypto = async (req: Request, res: Response) => {
+export const searchCrypto = async (req: Request, res: Response): Promise<void> => {
   try {
     const { q } = req.query;
 
     if (!q) {
-      return res.status(400).json({ success: false, error: 'q parameter is required' });
+      res.status(400).json({ success: false, error: 'q parameter is required' });
+      return;
     }
 
     const data = await coinGeckoService.searchCoins(q as string);
     res.json({ success: true, data });
+    return;
   } catch (error: any) {
     console.error('Error in searchCrypto:', error);
     res.status(500).json({ success: false, error: error.message });
+    return;
   }
 };
 
@@ -106,13 +112,15 @@ export const searchCrypto = async (req: Request, res: Response) => {
  * GET /api/crypto/trending
  * Get trending cryptocurrencies
  */
-export const getTrending = async (req: Request, res: Response) => {
+export const getTrending = async (_req: Request, res: Response): Promise<void> => {
   try {
     const data = await coinGeckoService.getTrendingCoins();
     res.json({ success: true, data });
+    return;
   } catch (error: any) {
     console.error('Error in getTrending:', error);
     res.status(500).json({ success: false, error: error.message });
+    return;
   }
 };
 

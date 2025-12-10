@@ -1,4 +1,4 @@
-import React from 'react';
+// React default import not required with the automatic JSX runtime
 
 interface StarRatingProps {
   rating: number;

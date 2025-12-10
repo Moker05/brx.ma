@@ -1,5 +1,4 @@
 import axios from 'axios';
-import * as cheerio from 'cheerio';
 import type { BVCStock, BVCIndex } from '../types/bvc.types';
 
 /**
@@ -21,7 +20,7 @@ const cache = new Map<string, { data: any; timestamp: number }>();
 async function fetchFromMedias24(): Promise<BVCStock[]> {
   try {
     // Note: Médias24 Bourse peut avoir des données plus accessibles
-    const response = await axios.get('https://bourse.medias24.com/', {
+    await axios.get('https://bourse.medias24.com/', {
       timeout: 10000,
       headers: {
         'User-Agent':
@@ -29,7 +28,7 @@ async function fetchFromMedias24(): Promise<BVCStock[]> {
       },
     });
 
-    const $ = cheerio.load(response.data);
+    // const _$ = cheerio.load(response.data);
     const stocks: BVCStock[] = [];
 
     // TODO: Parser le HTML de Médias24

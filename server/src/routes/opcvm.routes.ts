@@ -18,7 +18,7 @@ const router = Router();
 router.get('/', listOPCVM);
 
 // NEW: Real OPCVM data from AMMC/data.gov.ma
-router.get('/real', async (req: Request, res: Response) => {
+router.get('/real', async (_req: Request, res: Response) => {
   try {
     const opcvmData = await fetchOPCVMFromDataGov();
     res.json({
@@ -37,7 +37,7 @@ router.get('/real', async (req: Request, res: Response) => {
 });
 
 // NEW: OPCVM statistics
-router.get('/real/stats', async (req: Request, res: Response) => {
+router.get('/real/stats', async (_req: Request, res: Response) => {
   try {
     const stats = await getOPCVMStats();
     res.json({
@@ -55,7 +55,7 @@ router.get('/real/stats', async (req: Request, res: Response) => {
 });
 
 // NEW: Clear OPCVM cache
-router.post('/real/cache/clear', async (req: Request, res: Response) => {
+router.post('/real/cache/clear', async (_req: Request, res: Response) => {
   try {
     clearOPCVMCache();
     res.json({

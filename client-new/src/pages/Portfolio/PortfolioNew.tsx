@@ -36,7 +36,7 @@ export const PortfolioNew = () => {
   const {
     data: wallet,
     isLoading: walletLoading,
-    refetch: refetchWallet,
+    refetch: _refetchWallet,
   } = useQuery({
     queryKey: ['wallet', userId],
     queryFn: () => getWallet(userId),

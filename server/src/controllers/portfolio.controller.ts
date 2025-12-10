@@ -3,7 +3,7 @@ import { prisma } from '../utils/prisma';
 import { AssetType, Market, TransactionType } from '@prisma/client';
 
 // Get user's virtual wallet with positions and transactions
-export const getWallet = async (req: Request, res: Response) => {
+export const getWallet = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.params.userId || 'demo-user-001'; // TODO: Get from auth
 
@@ -126,14 +126,15 @@ export const getWallet = async (req: Request, res: Response) => {
 };
 
 // Add or update a position manually (creates transaction and deducts balance)
-export const addPosition = async (req: Request, res: Response) => {
+export const addPosition = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.params.userId || 'demo-user-001';
     const { symbol, assetType, market, quantity, purchasePrice, purchaseDate, name, notes } = req.body;
 
     // Validate input
     if (!symbol || !assetType || !quantity || !purchasePrice) {
-      return res.status(400).json({ error: 'Missing required fields' });
+      res.status(400).json({ error: 'Missing required fields' });
+      return;
     }
 
     // Get or create wallet
@@ -157,7 +158,7 @@ export const addPosition = async (req: Request, res: Response) => {
 
     // Check balance
     if (wallet.balance < totalCost) {
-      return res.status(400).json({
+      res.status(400).json({
         error: `Solde insuffisant. Requis: ${totalCost.toFixed(2)} MAD, Disponible: ${wallet.balance.toFixed(2)} MAD`,
       });
     }
@@ -253,7 +254,7 @@ export const addPosition = async (req: Request, res: Response) => {
 };
 
 // Update a position
-export const updatePosition = async (req: Request, res: Response) => {
+export const updatePosition = async (req: Request, res: Response): Promise<void> => {
   try {
     const { positionId } = req.params;
     const { quantity, purchasePrice, purchaseDate, name, notes } = req.body;
@@ -263,7 +264,8 @@ export const updatePosition = async (req: Request, res: Response) => {
     });
 
     if (!position) {
-      return res.status(404).json({ error: 'Position not found' });
+      res.status(404).json({ error: 'Position not found' });
+      return;
     }
 
     const updateData: any = {};
@@ -288,14 +290,16 @@ export const updatePosition = async (req: Request, res: Response) => {
     });
 
     res.json(updatedPosition);
+    return;
   } catch (error) {
     console.error('Error updating position:', error);
     res.status(500).json({ error: 'Failed to update position' });
+    return;
   }
 };
 
 // Delete a position
-export const deletePosition = async (req: Request, res: Response) => {
+export const deletePosition = async (req: Request, res: Response): Promise<void> => {
   try {
     const { positionId } = req.params;
 
@@ -304,20 +308,23 @@ export const deletePosition = async (req: Request, res: Response) => {
     });
 
     res.json({ message: 'Position deleted successfully' });
+    return;
   } catch (error) {
     console.error('Error deleting position:', error);
     res.status(500).json({ error: 'Failed to delete position' });
+    return;
   }
 };
 
 // Execute buy order
-export const executeBuyOrder = async (req: Request, res: Response) => {
+export const executeBuyOrder = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.params.userId || 'demo-user-001';
     const { symbol, assetType, market, quantity, price, notes } = req.body;
 
     if (!symbol || !assetType || !quantity || !price) {
-      return res.status(400).json({ error: 'Missing required fields' });
+      res.status(400).json({ error: 'Missing required fields' });
+      return;
     }
 
     // Get wallet
@@ -326,7 +333,8 @@ export const executeBuyOrder = async (req: Request, res: Response) => {
     });
 
     if (!wallet) {
-      return res.status(404).json({ error: 'Wallet not found' });
+      res.status(404).json({ error: 'Wallet not found' });
+      return;
     }
 
     const totalAmount = quantity * price;
@@ -335,9 +343,10 @@ export const executeBuyOrder = async (req: Request, res: Response) => {
 
     // Check balance
     if (wallet.balance < totalCost) {
-      return res.status(400).json({
+      res.status(400).json({
         error: `Insufficient balance. Required: ${totalCost.toFixed(2)} MAD, Available: ${wallet.balance.toFixed(2)} MAD`,
       });
+      return;
     }
 
     // Create transaction
@@ -415,20 +424,23 @@ export const executeBuyOrder = async (req: Request, res: Response) => {
       message: `Buy order executed: ${quantity} ${symbol} at ${price.toFixed(2)} MAD`,
       transaction,
     });
+    return;
   } catch (error) {
     console.error('Error executing buy order:', error);
     res.status(500).json({ error: 'Failed to execute buy order' });
+    return;
   }
 };
 
 // Execute sell order
-export const executeSellOrder = async (req: Request, res: Response) => {
+export const executeSellOrder = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.params.userId || 'demo-user-001';
     const { symbol, assetType, quantity, price, notes } = req.body;
 
     if (!symbol || !assetType || !quantity || !price) {
-      return res.status(400).json({ error: 'Missing required fields' });
+      res.status(400).json({ error: 'Missing required fields' });
+      return;
     }
 
     // Get wallet
@@ -437,7 +449,8 @@ export const executeSellOrder = async (req: Request, res: Response) => {
     });
 
     if (!wallet) {
-      return res.status(404).json({ error: 'Wallet not found' });
+      res.status(404).json({ error: 'Wallet not found' });
+      return;
     }
 
     // Find position
@@ -452,13 +465,15 @@ export const executeSellOrder = async (req: Request, res: Response) => {
     });
 
     if (!position) {
-      return res.status(404).json({ error: `No position found for ${symbol}` });
+      res.status(404).json({ error: `No position found for ${symbol}` });
+      return;
     }
 
     if (position.quantity < quantity) {
-      return res.status(400).json({
+      res.status(400).json({
         error: `Insufficient quantity. Required: ${quantity}, Available: ${position.quantity}`,
       });
+      return;
     }
 
     const totalAmount = quantity * price;
@@ -525,14 +540,16 @@ export const executeSellOrder = async (req: Request, res: Response) => {
       transaction,
       realizedPnL,
     });
+    return;
   } catch (error) {
     console.error('Error executing sell order:', error);
     res.status(500).json({ error: 'Failed to execute sell order' });
+    return;
   }
 };
 
 // Get portfolio history (for chart)
-export const getPortfolioHistory = async (req: Request, res: Response) => {
+export const getPortfolioHistory = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.params.userId || 'demo-user-001';
     const { period = '1M' } = req.query; // 1W, 1M, 1Y, MAX
@@ -542,7 +559,8 @@ export const getPortfolioHistory = async (req: Request, res: Response) => {
     });
 
     if (!wallet) {
-      return res.status(404).json({ error: 'Wallet not found' });
+      res.status(404).json({ error: 'Wallet not found' });
+      return;
     }
 
     // Calculate date range
@@ -580,14 +598,16 @@ export const getPortfolioHistory = async (req: Request, res: Response) => {
     });
 
     res.json(snapshots);
+    return;
   } catch (error) {
     console.error('Error getting portfolio history:', error);
     res.status(500).json({ error: 'Failed to get portfolio history' });
+    return;
   }
 };
 
 // Create portfolio snapshot (called periodically or after transactions)
-export const createPortfolioSnapshot = async (req: Request, res: Response) => {
+export const createPortfolioSnapshot = async (req: Request, res: Response): Promise<void> => {
   try {
     const userId = req.params.userId || 'demo-user-001';
 
@@ -599,7 +619,8 @@ export const createPortfolioSnapshot = async (req: Request, res: Response) => {
     });
 
     if (!wallet) {
-      return res.status(404).json({ error: 'Wallet not found' });
+      res.status(404).json({ error: 'Wallet not found' });
+      return;
     }
 
     const portfolioStats = calculatePortfolioStats(wallet);
@@ -616,9 +637,11 @@ export const createPortfolioSnapshot = async (req: Request, res: Response) => {
     });
 
     res.json(snapshot);
+    return;
   } catch (error) {
     console.error('Error creating portfolio snapshot:', error);
     res.status(500).json({ error: 'Failed to create portfolio snapshot' });
+    return;
   }
 };
 

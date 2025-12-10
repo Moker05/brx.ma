@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
+import type { FormEvent } from 'react';
 import { useCreatePost } from '../../hooks/useSocial';
 
 export function CreatePostForm({ defaultSymbol }: { defaultSymbol?: string }) {
@@ -10,7 +11,7 @@ export function CreatePostForm({ defaultSymbol }: { defaultSymbol?: string }) {
 
   const mutation = useCreatePost();
 
-  const submit = (e: React.FormEvent) => {
+  const submit = (e: FormEvent) => {
     e.preventDefault();
     mutation.mutate({ symbol, assetType, content, sentiment, targetPrice });
     setContent('');
@@ -35,7 +36,7 @@ export function CreatePostForm({ defaultSymbol }: { defaultSymbol?: string }) {
       <div className="flex items-center gap-2 mt-3">
         <input type="number" className="input input-sm" value={targetPrice ?? ''} onChange={(e) => setTargetPrice(e.target.value ? Number(e.target.value) : undefined)} placeholder="Target price (optional)" />
         <button type="submit" className="btn btn-primary btn-sm">Publier</button>
-        {mutation.isLoading && <span className="ml-2">Envoi...</span>}
+        {(mutation as any).isLoading && <span className="ml-2">Envoi...</span>}
       </div>
     </form>
   );

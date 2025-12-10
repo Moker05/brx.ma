@@ -1,0 +1,67 @@
+### Variables
+@baseUrl = http://localhost:5000
+@email = test@brx.ma
+@password = Test123456!
+
+### 1. Register
+POST {{baseUrl}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}",
+  "name": "Test User"
+}
+
+### 2. Login
+# @name login
+POST {{baseUrl}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+### 3. Get Current User
+@accessToken = {{login.response.body.data.accessToken}}
+GET {{baseUrl}}/api/auth/me
+Authorization: Bearer {{accessToken}}
+
+### 4. Refresh Token
+@refreshToken = {{login.response.body.refreshToken}}
+POST {{baseUrl}}/api/auth/refresh
+Content-Type: application/json
+
+{
+  "refreshToken": "{{refreshToken}}"
+}
+
+### 5. Forgot Password
+POST {{baseUrl}}/api/auth/forgot-password
+Content-Type: application/json
+
+{
+  "email": "{{email}}"
+}
+
+### 6. Verify Email (use token from email)
+POST {{baseUrl}}/api/auth/verify-email
+Content-Type: application/json
+
+{
+  "token": "PASTE_TOKEN_FROM_EMAIL_HERE"
+}
+
+### 7. Reset Password (use token from email)
+POST {{baseUrl}}/api/auth/reset-password
+Content-Type: application/json
+
+{
+  "token": "PASTE_TOKEN_FROM_EMAIL_HERE",
+  "password": "NewPassword123!"
+}
+
+### 8. Logout
+POST {{baseUrl}}/api/auth/logout
+Authorization: Bearer {{accessToken}}

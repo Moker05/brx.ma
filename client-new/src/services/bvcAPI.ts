@@ -61,7 +61,27 @@ export const getBVCStock = async (symbol: string): Promise<BVCStock> => {
 // Get BVC indices
 export const getBVCIndices = async (): Promise<BVCIndex[]> => {
   const response = await axios.get(`${API_URL}/bvc/indices`);
-  return response.data.data;
+  const data = response.data.data;
+
+  // Convert the object structure to array of indices
+  return [
+    {
+      name: 'MASI',
+      code: 'MASI',
+      value: data.masi.value,
+      change: data.masi.change,
+      changePercent: data.masi.change,
+      timestamp: new Date().toISOString(),
+    },
+    {
+      name: 'MSI 20',
+      code: 'MSI20',
+      value: data.msi20.value,
+      change: data.msi20.change,
+      changePercent: data.msi20.change,
+      timestamp: new Date().toISOString(),
+    },
+  ];
 };
 
 // Get market summary

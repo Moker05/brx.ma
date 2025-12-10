@@ -1,5 +1,4 @@
-import axios from 'axios';
-import * as cheerio from 'cheerio';
+// Services for BVC data
 import type {
   BVCStock,
   BVCIndex,
@@ -69,7 +68,7 @@ export async function fetchBVCIndices(): Promise<BVCIndex[]> {
   if (cached) return cached;
 
   try {
-    // Mock data for now
+    // Mock data for now - will be replaced with real scraping
     const mockIndices: BVCIndex[] = [
       {
         name: 'MASI',
@@ -77,14 +76,6 @@ export async function fetchBVCIndices(): Promise<BVCIndex[]> {
         value: 13450.25,
         change: 45.3,
         changePercent: 0.34,
-        timestamp: new Date(),
-      },
-      {
-        name: 'MADEX',
-        code: 'MADEX',
-        value: 10987.65,
-        change: 38.2,
-        changePercent: 0.35,
         timestamp: new Date(),
       },
       {

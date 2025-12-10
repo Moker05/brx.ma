@@ -1,13 +1,6 @@
 import axios from 'axios';
 import { AssetType } from '@prisma/client';
 
-interface PriceData {
-  symbol: string;
-  price: number;
-  currency: string;
-  timestamp: Date;
-}
-
 // Cache for price data (5 minute TTL)
 const priceCache = new Map<string, { price: number; timestamp: number }>();
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes

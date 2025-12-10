@@ -8,12 +8,47 @@ import {
   clearBVCCache,
   getBVCCacheStats,
 } from '../services/bvcService';
+import { scrapeStockAnalysis } from '../services/stockAnalysisScraperService';
 
 /**
  * Get all BVC stocks
+ * Now using real-time data from African Markets
  */
-export const getAllStocks = async (req: Request, res: Response) => {
+export const getAllStocks = async (_req: Request, res: Response): Promise<void> => {
   try {
+    // Try to get real-time data from scraper
+    try {
+      const scrapedStocks = await scrapeStockAnalysis();
+
+      // Convert to BVC stock format
+      const bvcStocks = scrapedStocks.map((stock: any) => ({
+        symbol: stock.symbol,
+        name: stock.name,
+        sector: stock.sector || 'Unknown',
+        volume: 0, // Not available from African Markets
+        marketCap: stock.marketCap,
+        lastPrice: stock.price,
+        change: stock.price * (stock.change / 100), // Convert percentage to absolute
+        changePercent: stock.change,
+        high: stock.price * 1.01,
+        low: stock.price * 0.99,
+        open: stock.price,
+        previousClose: stock.price - (stock.price * (stock.change / 100)),
+        timestamp: new Date().toISOString(),
+      }));
+
+      res.json({
+        success: true,
+        count: bvcStocks.length,
+        data: bvcStocks,
+        disclaimer: 'Données en temps réel depuis African Markets',
+      });
+      return;
+    } catch (scraperError) {
+      console.warn('Scraper failed, falling back to local data:', scraperError);
+    }
+
+    // Fallback to local data
     const stocks = await fetchBVCStocks();
     res.json({
       success: true,
@@ -21,22 +56,25 @@ export const getAllStocks = async (req: Request, res: Response) => {
       data: stocks,
       disclaimer: 'Données avec délai de 15 minutes',
     });
+    return;
   } catch (error) {
     console.error('Error in getAllStocks:', error);
     res.status(500).json({ error: 'Failed to fetch BVC stocks' });
+    return;
   }
 };
 
 /**
  * Get a specific stock by symbol
  */
-export const getStockBySymbol = async (req: Request, res: Response) => {
+export const getStockBySymbol = async (req: Request, res: Response): Promise<void> => {
   try {
     const { symbol } = req.params;
     const stock = await fetchBVCStock(symbol.toUpperCase());
 
     if (!stock) {
-      return res.status(404).json({ error: `Stock ${symbol} not found` });
+      res.status(404).json({ error: `Stock ${symbol} not found` });
+      return;
     }
 
     res.json({
@@ -44,16 +82,18 @@ export const getStockBySymbol = async (req: Request, res: Response) => {
       data: stock,
       disclaimer: 'Données avec délai de 15 minutes',
     });
+    return;
   } catch (error) {
     console.error('Error in getStockBySymbol:', error);
     res.status(500).json({ error: 'Failed to fetch stock' });
+    return;
   }
 };
 
 /**
  * Get BVC indices (MASI, MADEX, etc.)
  */
-export const getIndices = async (req: Request, res: Response) => {
+export const getIndices = async (_req: Request, res: Response): Promise<void> => {
   try {
     const indices = await fetchBVCIndices();
     res.json({
@@ -62,16 +102,18 @@ export const getIndices = async (req: Request, res: Response) => {
       data: indices,
       disclaimer: 'Données avec délai de 15 minutes',
     });
+    return;
   } catch (error) {
     console.error('Error in getIndices:', error);
     res.status(500).json({ error: 'Failed to fetch indices' });
+    return;
   }
 };
 
 /**
  * Get market summary (top gainers, losers, most active)
  */
-export const getMarketSummary = async (req: Request, res: Response) => {
+export const getMarketSummary = async (_req: Request, res: Response): Promise<void> => {
   try {
     const summary = await fetchBVCMarketSummary();
     res.json({
@@ -79,16 +121,18 @@ export const getMarketSummary = async (req: Request, res: Response) => {
       data: summary,
       disclaimer: 'Données avec délai de 15 minutes',
     });
+    return;
   } catch (error) {
     console.error('Error in getMarketSummary:', error);
     res.status(500).json({ error: 'Failed to fetch market summary' });
+    return;
   }
 };
 
 /**
  * Get sector performance
  */
-export const getSectorPerformance = async (req: Request, res: Response) => {
+export const getSectorPerformance = async (_req: Request, res: Response): Promise<void> => {
   try {
     const sectors = await fetchBVCSectorPerformance();
     res.json({
@@ -96,40 +140,46 @@ export const getSectorPerformance = async (req: Request, res: Response) => {
       count: sectors.length,
       data: sectors,
     });
+    return;
   } catch (error) {
     console.error('Error in getSectorPerformance:', error);
     res.status(500).json({ error: 'Failed to fetch sector performance' });
+    return;
   }
 };
 
 /**
  * Clear BVC cache (admin only)
  */
-export const clearCache = async (req: Request, res: Response) => {
+export const clearCache = async (_req: Request, res: Response): Promise<void> => {
   try {
     clearBVCCache();
     res.json({
       success: true,
       message: 'BVC cache cleared successfully',
     });
+    return;
   } catch (error) {
     console.error('Error in clearCache:', error);
     res.status(500).json({ error: 'Failed to clear cache' });
+    return;
   }
 };
 
 /**
  * Get cache statistics
  */
-export const getCacheStats = async (req: Request, res: Response) => {
+export const getCacheStats = async (_req: Request, res: Response): Promise<void> => {
   try {
     const stats = getBVCCacheStats();
     res.json({
       success: true,
       data: stats,
     });
+    return;
   } catch (error) {
     console.error('Error in getCacheStats:', error);
     res.status(500).json({ error: 'Failed to get cache stats' });
+    return;
   }
 };

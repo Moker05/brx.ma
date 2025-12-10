@@ -1,6 +1,6 @@
 // Technical Indicators calculation utilities
 
-import type { CandlestickData, LineData } from 'lightweight-charts';
+import type { CandlestickData } from 'lightweight-charts';
 
 /**
  * Simple Moving Average (SMA)

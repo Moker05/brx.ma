@@ -1,5 +1,3 @@
-import axios from 'axios';
-
 export type AuthMode = 'email' | 'phone';
 
 export interface AuthUser {

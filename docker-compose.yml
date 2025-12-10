@@ -1,0 +1,108 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: brx-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: brx_user
+      POSTGRES_PASSWORD: brx_admin
+      POSTGRES_DB: brx_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U brx_user -d brx_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - brx-network
+
+  # Redis (optional, for caching)
+  redis:
+    image: redis:7-alpine
+    container_name: brx-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - brx-network
+
+  # Backend API Server
+  backend:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: brx-backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      DATABASE_URL: postgresql://brx_user:brx_admin@postgres:5432/brx_db
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+    env_file:
+      - ./server/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - brx-network
+    volumes:
+      # Mount logs directory for persistence
+      - ./server/logs:/app/logs
+
+  # Frontend with Nginx
+  frontend:
+    build:
+      context: ./client-new
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: https://api.brx.ma
+    container_name: brx-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost/health || exit 1"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    networks:
+      - brx-network
+
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  brx-network:
+    driver: bridge

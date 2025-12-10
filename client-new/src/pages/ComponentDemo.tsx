@@ -2,7 +2,7 @@ import { StatCard, PriceDisplay, EmptyState, LoadingState } from '@/components/c
 import { PortfolioHeader, PortfolioStats } from '@/components/portfolio';
 import { ThemeToggle, ThemeSelector } from '@/components/theme';
 import { useTheme } from '@/hooks/useTheme';
-import { FiInbox, FiDollarSign, FiTrendingUp, FiPieChart, FiSun, FiMoon } from 'react-icons/fi';
+import { FiInbox, FiDollarSign, FiTrendingUp, FiPieChart, FiSun } from 'react-icons/fi';
 
 /**
  * Page de démonstration des nouveaux composants

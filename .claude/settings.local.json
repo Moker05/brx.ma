@@ -59,7 +59,10 @@
       "Bash(python -m json.tool:*)",
       "Bash(find:*)",
       "Bash(grep:*)",
-      "Bash(del nul)"
+      "Bash(del nul)",
+      "Bash(del \"c:\\Users\\YFA\\projets\\brx.ma\\client-new\\src\\pages\\Markets\\MarketsBVC.tsx\")",
+      "Bash(npm run build:*)",
+      "Bash(git reset:*)"
     ],
     "deny": [],
     "ask": []

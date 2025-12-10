@@ -1,0 +1,281 @@
+{
+  "info": {
+    "name": "BRX.MA Authentication",
+    "description": "Collection complète pour tester l'authentification BRX.MA",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "accessToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Login - Test User",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "    const response = pm.response.json();",
+              "    pm.collectionVariables.set('accessToken', response.data.accessToken);",
+              "    console.log('Access token saved:', response.data.accessToken);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"test@brx.ma\",\n  \"password\": \"Password123!\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/login",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "login"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "2. Login - Demo User",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "    const response = pm.response.json();",
+              "    pm.collectionVariables.set('accessToken', response.data.accessToken);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"demo@brx.ma\",\n  \"password\": \"Password123!\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/login",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "login"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "3. Register New User",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 201) {",
+              "    const response = pm.response.json();",
+              "    pm.collectionVariables.set('accessToken', response.data.accessToken);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"newuser@brx.ma\",\n  \"password\": \"Password123!\",\n  \"name\": \"New User\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/register",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "register"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "4. Get Current User",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/me",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "me"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "5. Refresh Token",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "if (pm.response.code === 200) {",
+              "    const response = pm.response.json();",
+              "    pm.collectionVariables.set('accessToken', response.data.accessToken);",
+              "}"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/refresh",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "refresh"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "6. Forgot Password",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"test@brx.ma\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/forgot-password",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "forgot-password"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "7. Verify Email",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"token\": \"PASTE_TOKEN_FROM_LOGS\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/verify-email",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "verify-email"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "8. Reset Password",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"token\": \"PASTE_TOKEN_FROM_LOGS\",\n  \"password\": \"NewPassword123!\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/reset-password",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "reset-password"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "9. Logout",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/auth/logout",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "auth", "logout"]
+        }
+      },
+      "response": []
+    }
+  ]
+}

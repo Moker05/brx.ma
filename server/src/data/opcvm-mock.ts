@@ -1,4 +1,4 @@
-import { OPCVM, OPCVMCategory, OPCVMHistory } from '../types/opcvm.types';
+import type { OPCVM, OPCVMHistory } from '../types/opcvm.types';
 
 const now = new Date();
 

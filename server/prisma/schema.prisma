@@ -16,6 +16,7 @@ model User {
   email         String      @unique
   password      String      // bcrypt hashed
   name          String?
+  emailVerified Boolean     @default(false)
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
@@ -26,8 +27,42 @@ model User {
   // Social Trading Relations
   profile       UserProfile?
   ratingsGiven  UserRating[] @relation("RatingsGiven")
+  refreshTokens RefreshToken[]
+  authTokens    AuthToken[]
 
   @@map("users")
+}
+
+// Refresh tokens persisted for security
+model RefreshToken {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token      String   @unique
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+// Auth tokens for verification and password reset
+enum AuthTokenType {
+  VERIFY
+  RESET
+}
+
+model AuthToken {
+  id         String        @id @default(uuid())
+  userId     String
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token      String        @unique
+  type       AuthTokenType
+  expiresAt  DateTime
+  createdAt  DateTime      @default(now())
+
+  @@index([userId])
+  @@map("auth_tokens")
 }
 
 // Portfolio model

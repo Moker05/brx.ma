@@ -1,6 +1,16 @@
 import { Router } from 'express';
-import { register, login, getCurrentUser, logout } from '../controllers/auth.controller';
+import {
+	register,
+	login,
+	getCurrentUser,
+	logout,
+	refreshToken,
+	forgotPassword,
+	resetPassword,
+	verifyEmail,
+} from '../controllers/auth.controller';
 import { authMiddleware } from '../middleware/auth.middleware';
+import { authRateLimiter, passwordResetRateLimiter } from '../middleware/rateLimiter.middleware';
 
 const router = Router();
 
@@ -9,14 +19,14 @@ const router = Router();
  * @desc    Register a new user
  * @access  Public
  */
-router.post('/register', register);
+router.post('/register', authRateLimiter, register);
 
 /**
  * @route   POST /api/auth/login
  * @desc    Login user and get JWT token
  * @access  Public
  */
-router.post('/login', login);
+router.post('/login', authRateLimiter, login);
 
 /**
  * @route   GET /api/auth/me
@@ -31,5 +41,33 @@ router.get('/me', authMiddleware, getCurrentUser);
  * @access  Public
  */
 router.post('/logout', logout);
+
+/**
+ * @route   POST /api/auth/refresh
+ * @desc    Refresh access token
+ * @access  Public (requires refresh token)
+ */
+router.post('/refresh', refreshToken);
+
+/**
+ * @route   POST /api/auth/forgot-password
+ * @desc    Request password reset email
+ * @access  Public
+ */
+router.post('/forgot-password', passwordResetRateLimiter, forgotPassword);
+
+/**
+ * @route   POST /api/auth/reset-password
+ * @desc    Reset password with token
+ * @access  Public
+ */
+router.post('/reset-password', authRateLimiter, resetPassword);
+
+/**
+ * @route   POST /api/auth/verify-email
+ * @desc    Verify email with token
+ * @access  Public
+ */
+router.post('/verify-email', verifyEmail);
 
 export default router;

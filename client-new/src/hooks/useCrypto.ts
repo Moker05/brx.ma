@@ -1,84 +1,75 @@
 import { useQuery } from '@tanstack/react-query';
-import {
-  getCryptoMarkets,
-  getCryptoDetail,
-  convertToChartData,
-  getTrendingCryptos,
-  getSimplePrices,
-} from '../services/coinGeckoAPI';
+import axios from 'axios';
 
-/**
- * Hook to fetch crypto markets list
- */
-export const useCryptoMarkets = (currency: string = 'usd', perPage: number = 50) => {
-  return useQuery({
-    queryKey: ['cryptoMarkets', currency, perPage],
-    queryFn: () => getCryptoMarkets(currency, perPage, 1),
-    refetchInterval: 60000, // Refresh every minute
-    staleTime: 30000, // Consider data stale after 30 seconds
-  });
-};
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
-/**
- * Hook to fetch crypto detail
- */
-export const useCryptoDetail = (id: string) => {
-  return useQuery({
-    queryKey: ['cryptoDetail', id],
-    queryFn: () => getCryptoDetail(id),
-    enabled: !!id,
-    staleTime: 60000, // 1 minute
-  });
-};
+export interface CryptoMarketData {
+  id: string;
+  symbol: string;
+  name: string;
+  image: string;
+  current_price: number;
+  market_cap: number;
+  market_cap_rank: number;
+  total_volume: number;
+  high_24h: number;
+  low_24h: number;
+  price_change_24h: number;
+  price_change_percentage_24h: number;
+  price_change_percentage_7d_in_currency?: number;
+  price_change_percentage_30d_in_currency?: number;
+  circulating_supply: number;
+  total_supply: number | null;
+  max_supply: number | null;
+  ath: number;
+  ath_change_percentage: number;
+  last_updated: string;
+}
 
-/**
- * Hook to fetch crypto chart data
- */
-export const useCryptoChart = (id: string, days: number = 30) => {
-  return useQuery({
-    queryKey: ['cryptoChart', id, days],
-    queryFn: () => convertToChartData(id, days),
-    enabled: !!id,
-    staleTime: 60000, // 1 minute
-  });
-};
+interface CryptoMarketsResponse {
+  success: boolean;
+  data: CryptoMarketData[];
+}
 
-/**
- * Hook to fetch trending cryptos
- */
-export const useTrendingCryptos = () => {
-  return useQuery({
-    queryKey: ['trendingCryptos'],
-    queryFn: getTrendingCryptos,
-    staleTime: 300000, // 5 minutes
-  });
-};
-
-/**
- * Hook to fetch simple prices for multiple coins
- */
-export const useSimplePrices = (ids: string[], currencies: string[] = ['usd']) => {
-  return useQuery({
-    queryKey: ['simplePrices', ids, currencies],
-    queryFn: () => getSimplePrices(ids, currencies),
-    enabled: ids.length > 0,
-    refetchInterval: 30000, // Refresh every 30 seconds
-    staleTime: 15000, // Consider stale after 15 seconds
-  });
-};
-
-/**
- * Hook to fetch real-time price for a single crypto
- */
-export const useCryptoPrice = (id: string, currency: string = 'usd') => {
-  return useQuery({
-    queryKey: ['cryptoPrice', id, currency],
+export function useCryptoMarkets(limit = 250, page = 1) {
+  return useQuery<CryptoMarketData[]>({
+    queryKey: ['crypto-markets', limit, page],
     queryFn: async () => {
-      const prices = await getSimplePrices([id], [currency]);
-      return prices[id]?.[currency] || null;
+      const response = await axios.get<CryptoMarketsResponse>(`${API_BASE_URL}/crypto/markets`, {
+        params: { limit, page, currency: 'usd' },
+      });
+      return response.data.data;
     },
-    enabled: !!id,
-    refetchInterval: 10000, // Refresh every 10 seconds
-    staleTime: 5000, // Consider stale after 5 seconds
+    staleTime: 30000,
+    refetchInterval: 60000,
   });
-};
+}
+
+export function useCryptoSearch(query: string) {
+  return useQuery({
+    queryKey: ['crypto-search', query],
+    queryFn: async () => {
+      if (!query || query.trim().length < 2) return [];
+      const response = await axios.get(`${API_BASE_URL}/crypto/search`, { params: { q: query } });
+      return response.data.data;
+    },
+    enabled: query.trim().length >= 2,
+    staleTime: 60000,
+  });
+}
+
+export function useCryptoPrices(coinIds: string[]) {
+  return useQuery({
+    queryKey: ['crypto-prices', coinIds],
+    queryFn: async () => {
+      if (coinIds.length === 0) return {};
+      const response = await axios.get(`${API_BASE_URL}/crypto/prices`, {
+        params: { ids: coinIds.join(','), currency: 'usd' },
+      });
+      return response.data.data;
+    },
+    enabled: coinIds.length > 0,
+    staleTime: 30000,
+    refetchInterval: 60000,
+  });
+}

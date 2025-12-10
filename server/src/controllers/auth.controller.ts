@@ -1,21 +1,18 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
-import { generateToken } from '../utils/jwt';
-import { validateRequest, registerSchema, loginSchema } from '../utils/validation';
-import { RegisterDto, LoginDto, AuthResponse } from '../types/auth.types';
+import {
+  registerUser,
+  authenticateUser,
+  generateTokensForUser,
+  saveRefreshToken,
+  revokeRefreshToken,
+  revokeAllRefreshTokensForUser,
+  verifyAndConsumeRefreshToken,
+  createPasswordResetToken,
+  consumeAuthToken,
+} from '../services/auth.service';
+import { validateRequest, registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema, verifyEmailSchema } from '../utils/validation';
 import { prisma } from '../utils/prisma';
-
-// TEMPORARY: In-memory user storage until Prisma is configured
-interface InMemoryUser {
-  id: string;
-  email: string;
-  password: string;
-  name: string | null;
-  createdAt: Date;
-}
-
-const inMemoryUsers: InMemoryUser[] = [];
-let userIdCounter = 1;
 
 /**
  * Register a new user
@@ -23,67 +20,38 @@ let userIdCounter = 1;
  */
 export const register = async (req: Request, res: Response): Promise<void> => {
   try {
-    // Validate request body
-    const data = validateRequest<RegisterDto>(registerSchema, req.body);
+    const data = validateRequest(registerSchema, req.body);
 
-    // Check if user already exists (in-memory)
-    const existingUser = inMemoryUsers.find(u => u.email === data.email);
+    const user = await registerUser(data.email, data.password, data.name);
 
-    if (existingUser) {
-      res.status(400).json({
-        success: false,
-        message: 'Un utilisateur avec cet email existe déjà',
-      });
-      return;
-    }
+    const tokens = generateTokensForUser({ id: user.id, email: user.email });
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(data.password, 10);
+    await saveRefreshToken(user.id, tokens.refreshToken).catch(() => {});
 
-    // Create user (in-memory)
-    const newUser: InMemoryUser = {
-      id: `user_${userIdCounter++}`,
-      email: data.email,
-      password: hashedPassword,
-      name: data.name || null,
-      createdAt: new Date(),
-    };
-
-    inMemoryUsers.push(newUser);
-
-    // Generate JWT token
-    const token = generateToken({
-      userId: newUser.id,
-      email: newUser.email,
+    // Set httpOnly cookie for refresh token
+    res.cookie('refreshToken', tokens.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 30 * 24 * 60 * 60 * 1000,
     });
-
-    // Response (without password)
-    const { password, ...userWithoutPassword } = newUser;
-    const response: AuthResponse = {
-      user: userWithoutPassword,
-      token,
-    };
 
     res.status(201).json({
       success: true,
       message: 'Utilisateur créé avec succès',
-      data: response,
+      data: { user: { id: user.id, email: user.email, name: user.name }, accessToken: tokens.accessToken },
     });
   } catch (error) {
     console.error('Register error:', error);
-
-    if (error instanceof Error && error.message.startsWith('Validation failed')) {
-      res.status(400).json({
-        success: false,
-        message: error.message,
-      });
+    if (error instanceof Error && error.message.includes('Email already')) {
+      res.status(400).json({ success: false, message: 'Un utilisateur avec cet email existe déjà' });
       return;
     }
-
-    res.status(500).json({
-      success: false,
-      message: 'Erreur lors de la création du compte',
-    });
+    if (error instanceof Error && error.message.startsWith('Validation failed')) {
+      res.status(400).json({ success: false, message: error.message });
+      return;
+    }
+    res.status(500).json({ success: false, message: 'Erreur lors de la création du compte' });
   }
 };
 
@@ -93,66 +61,33 @@ export const register = async (req: Request, res: Response): Promise<void> => {
  */
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {
-    // Validate request body
-    const data = validateRequest<LoginDto>(loginSchema, req.body);
+    const data = validateRequest(loginSchema, req.body);
 
-    // Find user by email (in-memory)
-    const user = inMemoryUsers.find(u => u.email === data.email);
+    const user = await authenticateUser(data.email, data.password);
 
-    if (!user) {
-      res.status(401).json({
-        success: false,
-        message: 'Email ou mot de passe incorrect',
-      });
-      return;
-    }
+    const tokens = generateTokensForUser({ id: user.id, email: user.email });
 
-    // Verify password
-    const isPasswordValid = await bcrypt.compare(data.password, user.password);
+    await saveRefreshToken(user.id, tokens.refreshToken).catch(() => {});
 
-    if (!isPasswordValid) {
-      res.status(401).json({
-        success: false,
-        message: 'Email ou mot de passe incorrect',
-      });
-      return;
-    }
-
-    // Generate JWT token
-    const token = generateToken({
-      userId: user.id,
-      email: user.email,
+    res.cookie('refreshToken', tokens.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 30 * 24 * 60 * 60 * 1000,
     });
-
-    // Remove password from response
-    const { password, ...userWithoutPassword } = user;
-
-    // Response
-    const response: AuthResponse = {
-      user: userWithoutPassword,
-      token,
-    };
 
     res.status(200).json({
       success: true,
       message: 'Connexion réussie',
-      data: response,
+      data: { user: { id: user.id, email: user.email, name: user.name }, accessToken: tokens.accessToken },
     });
   } catch (error) {
     console.error('Login error:', error);
-
     if (error instanceof Error && error.message.startsWith('Validation failed')) {
-      res.status(400).json({
-        success: false,
-        message: error.message,
-      });
+      res.status(400).json({ success: false, message: error.message });
       return;
     }
-
-    res.status(500).json({
-      success: false,
-      message: 'Erreur lors de la connexion',
-    });
+    res.status(401).json({ success: false, message: 'Email ou mot de passe incorrect' });
   }
 };
 
@@ -162,49 +97,133 @@ export const login = async (req: Request, res: Response): Promise<void> => {
  */
 export const getCurrentUser = async (req: Request, res: Response): Promise<void> => {
   try {
-    // User is already attached to request by auth middleware
-    if (!req.user) {
-      res.status(401).json({
-        success: false,
-        message: 'Non authentifié',
-      });
+    // Expect auth middleware to populate req.user with { userId }
+    const auth = (req as any).user;
+    if (!auth || !auth.userId) {
+      res.status(401).json({ success: false, message: 'Non authentifié' });
       return;
     }
 
-    // Get user from in-memory storage
-    const user = inMemoryUsers.find(u => u.id === req.user!.userId);
+    const user = await prisma.user.findUnique({ where: { id: auth.userId }, select: { id: true, email: true, name: true, emailVerified: true, createdAt: true, updatedAt: true } });
 
     if (!user) {
-      res.status(404).json({
-        success: false,
-        message: 'Utilisateur non trouvé',
-      });
+      res.status(404).json({ success: false, message: 'Utilisateur non trouvé' });
       return;
     }
 
-    // Remove password from response
-    const { password, ...userWithoutPassword } = user;
-
-    res.status(200).json({
-      success: true,
-      data: userWithoutPassword,
-    });
+    res.status(200).json({ success: true, data: user });
   } catch (error) {
     console.error('Get current user error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Erreur lors de la récupération de l\'utilisateur',
-    });
+    res.status(500).json({ success: false, message: 'Erreur lors de la récupération de l\'utilisateur' });
   }
 };
 
 /**
- * Logout user (client-side only, just remove token)
+ * Logout user
  * POST /api/auth/logout
  */
 export const logout = async (req: Request, res: Response): Promise<void> => {
-  res.status(200).json({
-    success: true,
-    message: 'Déconnexion réussie',
-  });
+  try {
+    // Try cookie first
+    const token = req.cookies?.refreshToken || req.body?.refreshToken || req.headers['x-refresh-token'];
+    if (token) {
+      await revokeRefreshToken(String(token)).catch(() => {});
+    }
+    res.clearCookie('refreshToken');
+    res.status(200).json({ success: true, message: 'Déconnexion réussie' });
+  } catch (error) {
+    console.error('Logout error:', error);
+    res.status(500).json({ success: false, message: 'Erreur lors de la déconnexion' });
+  }
+};
+
+/**
+ * Refresh access token
+ * POST /api/auth/refresh
+ */
+export const refreshToken = async (req: Request, res: Response): Promise<void> => {
+  try {
+    // token can come from cookie or body
+    const token = req.cookies?.refreshToken || req.body?.refreshToken || req.headers['x-refresh-token'];
+    if (!token) {
+      res.status(400).json({ success: false, message: 'Refresh token requis' });
+      return;
+    }
+
+    const decoded = await verifyAndConsumeRefreshToken(String(token));
+
+    // revoke old token
+    await revokeRefreshToken(String(token)).catch(() => {});
+
+    const tokens = generateTokensForUser({ id: decoded.userId, email: decoded.email });
+
+    await saveRefreshToken(decoded.userId, tokens.refreshToken).catch(() => {});
+
+    res.cookie('refreshToken', tokens.refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    });
+
+    res.status(200).json({ success: true, data: { accessToken: tokens.accessToken } });
+  } catch (error) {
+    console.error('Refresh token error:', error);
+    res.status(401).json({ success: false, message: 'Refresh token invalide ou expiré' });
+  }
+};
+
+/**
+ * Request password reset
+ * POST /api/auth/forgot-password
+ */
+export const forgotPassword = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const data = validateRequest(forgotPasswordSchema, req.body);
+    // Best-effort: do not reveal whether the email exists
+    await createPasswordResetToken(data.email).catch(() => {});
+    res.status(200).json({ success: true, message: 'Si cet email existe, vous recevrez un lien de réinitialisation.' });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ success: false, message: 'Erreur lors de la demande de réinitialisation' });
+  }
+};
+
+/**
+ * Reset password with token
+ * POST /api/auth/reset-password
+ */
+export const resetPassword = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const data = validateRequest(resetPasswordSchema, req.body);
+    const userId = await consumeAuthToken(data.token, 'RESET');
+
+    const hashed = await bcrypt.hash(data.password, Number(process.env.BCRYPT_ROUNDS || 12));
+
+    await prisma.user.update({ where: { id: userId }, data: { password: hashed } });
+
+    // Revoke all refresh tokens
+    await revokeAllRefreshTokensForUser(userId).catch(() => {});
+
+    res.status(200).json({ success: true, message: 'Mot de passe réinitialisé avec succès' });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(400).json({ success: false, message: 'Token invalide ou expiré' });
+  }
+};
+
+/**
+ * Verify email with token
+ * POST /api/auth/verify-email
+ */
+export const verifyEmail = async (req: Request, res: Response): Promise<void> => {
+  try {
+    const data = validateRequest(verifyEmailSchema, req.body);
+    const userId = await consumeAuthToken(data.token, 'VERIFY');
+    await prisma.user.update({ where: { id: userId }, data: { emailVerified: true } });
+    res.status(200).json({ success: true, message: 'Email vérifié avec succès' });
+  } catch (error) {
+    console.error('Verify email error:', error);
+    res.status(400).json({ success: false, message: 'Token invalide ou expiré' });
+  }
 };

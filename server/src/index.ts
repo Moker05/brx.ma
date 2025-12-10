@@ -4,6 +4,7 @@ import cors from 'cors';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import compression from 'compression';
+import cookieParser from 'cookie-parser';
 // Routes
 import authRoutes from './routes/auth.routes';
 import stocksRoutes from './routes/stocks.routes';
@@ -15,6 +16,7 @@ import priceRoutes from './routes/price.routes';
 import bvcRoutes from './routes/bvc.routes';
 import opcvmRoutes from './routes/opcvm.routes';
 import socialRoutes from './routes/social.routes';
+import { startBVCPrewarmJob } from './jobs/bvcPrewarmJob';
 
 // Middleware
 import { errorHandler } from './middleware/errorHandler';
@@ -37,6 +39,8 @@ app.use(cors({
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+// Cookie parser (for httpOnly refresh tokens)
+app.use(cookieParser(process.env.COOKIE_SECRET));
 
 // Logging
 if (process.env.NODE_ENV === 'development') {
@@ -78,6 +82,13 @@ const server = app.listen(PORT, () => {
   console.log(`🚀 Server running on port ${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV}`);
   console.log(`🔗 CORS origin: ${process.env.CORS_ORIGIN}`);
+  // Start background pre-warm job for BVC data
+  try {
+    startBVCPrewarmJob();
+    console.log('🕒 BVC pre-warm job scheduled (every 15 minutes)');
+  } catch (e) {
+    console.error('Failed to start BVC pre-warm job', e);
+  }
 });
 
 // Graceful shutdown

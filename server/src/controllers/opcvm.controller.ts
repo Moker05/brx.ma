@@ -32,22 +32,25 @@ export const listOPCVM = (req: Request, res: Response) => {
   }
 };
 
-export const getOPCVMDetails = (req: Request, res: Response) => {
+export const getOPCVMDetails = (req: Request, res: Response): void => {
   try {
     const { id } = req.params;
     const opcvm = getOPCVMById(id);
 
     if (!opcvm) {
-      return res.status(404).json({ error: 'OPCVM not found' });
+      res.status(404).json({ error: 'OPCVM not found' });
+      return;
     }
 
     res.json({
       success: true,
       data: opcvm,
     });
+    return;
   } catch (error) {
     console.error('Error getting OPCVM details:', error);
     res.status(500).json({ error: 'Failed to fetch OPCVM' });
+    return;
   }
 };
 
@@ -68,7 +71,7 @@ export const getOPCVMByCategoryHandler = (req: Request, res: Response) => {
   }
 };
 
-export const getOPCVMHistoryHandler = (req: Request, res: Response) => {
+export const getOPCVMHistoryHandler = (req: Request, res: Response): void => {
   try {
     const { id } = req.params;
     const { period } = req.query;
@@ -76,7 +79,8 @@ export const getOPCVMHistoryHandler = (req: Request, res: Response) => {
     const history = getOPCVMHistory(id, period ? String(period) : undefined);
 
     if (!history.length) {
-      return res.status(404).json({ error: 'History not found for this OPCVM' });
+      res.status(404).json({ error: 'History not found for this OPCVM' });
+      return;
     }
 
     res.json({
@@ -84,19 +88,22 @@ export const getOPCVMHistoryHandler = (req: Request, res: Response) => {
       count: history.length,
       data: history,
     });
+    return;
   } catch (error) {
     console.error('Error getting OPCVM history:', error);
     res.status(500).json({ error: 'Failed to fetch OPCVM history' });
+    return;
   }
 };
 
-export const simulateOPCVMInvestment = (req: Request, res: Response) => {
+export const simulateOPCVMInvestment = (req: Request, res: Response): void => {
   try {
     const { principal, rate, years, contribution, contributionFrequency, managementFee, opcvmId } =
       req.body;
 
     if (!principal || !rate || !years) {
-      return res.status(400).json({ error: 'principal, rate and years are required' });
+      res.status(400).json({ error: 'principal, rate and years are required' });
+      return;
     }
 
     const result = simulateInvestment({

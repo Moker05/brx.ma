@@ -24,9 +24,35 @@ export const validateRequest = <T>(schema: z.ZodSchema<T>, data: unknown): T => 
     return schema.parse(data);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const messages = error.errors.map((err) => err.message).join(', ');
+      const messages = error.issues.map((issue) => issue.message).join(', ');
       throw new Error(`Validation failed: ${messages}`);
     }
     throw error;
   }
 };
+
+export const refreshTokenSchema = z.object({
+  refreshToken: z.string().min(1, 'Refresh token requis'),
+});
+
+export const forgotPasswordSchema = z.object({
+  email: z.string().email('Email invalide'),
+});
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1, 'Token requis'),
+  password: z.string()
+    .min(8, 'Le mot de passe doit contenir au moins 8 caractères')
+    .regex(/[A-Z]/, 'Le mot de passe doit contenir au moins une majuscule')
+    .regex(/[a-z]/, 'Le mot de passe doit contenir au moins une minuscule')
+    .regex(/[0-9]/, 'Le mot de passe doit contenir au moins un chiffre'),
+});
+
+export const verifyEmailSchema = z.object({
+  token: z.string().min(1, 'Token requis'),
+});
+
+export type RefreshTokenDto = z.infer<typeof refreshTokenSchema>;
+export type ForgotPasswordDto = z.infer<typeof forgotPasswordSchema>;
+export type ResetPasswordDto = z.infer<typeof resetPasswordSchema>;
+export type VerifyEmailDto = z.infer<typeof verifyEmailSchema>;

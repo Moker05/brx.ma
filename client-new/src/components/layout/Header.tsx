@@ -1,12 +1,15 @@
 import { Link } from 'react-router-dom';
-import { FiMenu, FiSearch } from 'react-icons/fi';
+import { FiMenu, FiSearch, FiLogOut, FiUser } from 'react-icons/fi';
 import { ThemeSelector } from '@/components/theme';
+import { useAuth } from '@/context/AuthContext';
 
 interface HeaderProps {
   onMenuToggle: () => void;
 }
 
 export const Header = ({ onMenuToggle }: HeaderProps) => {
+  const { user, logout } = useAuth();
+  const isAuthenticated = !!user;
 
   return (
     <header className="navbar h-14 px-4 bg-base-100/70 backdrop-blur-xl border-b border-white/5 shadow-lg relative z-40">
@@ -46,31 +49,63 @@ export const Header = ({ onMenuToggle }: HeaderProps) => {
         {/* Theme Selector */}
         <ThemeSelector />
 
-        {/* User Menu */}
-        <div className="dropdown dropdown-end">
-          <label tabIndex={0} className="btn btn-ghost btn-circle avatar placeholder">
-            <div className="bg-neutral-focus text-neutral-content rounded-full w-10">
-              <span className="text-sm">U</span>
-            </div>
-          </label>
-          <ul
-            tabIndex={0}
-            className="menu menu-sm dropdown-content mt-3 z-40 p-2 shadow bg-base-100 rounded-box w-52 border border-base-300"
-          >
-            <li>
-              <Link to="/portfolio">Mon Portfolio</Link>
-            </li>
-            <li>
-              <Link to="/trading">Trading virtuel</Link>
-            </li>
-            <li>
-              <Link to="/settings">Paramètres</Link>
-            </li>
-            <li>
-              <a>Déconnexion</a>
-            </li>
-          </ul>
-        </div>
+        {/* Auth Section */}
+        {isAuthenticated && user ? (
+          /* User Menu - Authenticated */
+          <div className="dropdown dropdown-end">
+            <label tabIndex={0} className="btn btn-ghost btn-circle avatar placeholder">
+              <div className="bg-primary text-primary-content rounded-full w-10">
+                <span className="text-sm font-semibold">
+                  {user.name?.charAt(0).toUpperCase() || user.email?.charAt(0).toUpperCase() || 'U'}
+                </span>
+              </div>
+            </label>
+            <ul
+              tabIndex={0}
+              className="menu menu-sm dropdown-content mt-3 z-40 p-2 shadow bg-base-100 rounded-box w-52 border border-base-300"
+            >
+              <li className="menu-title">
+                <span className="text-xs opacity-60">
+                  {user.email}
+                </span>
+              </li>
+              <li>
+                <Link to="/dashboard">
+                  <FiUser className="w-4 h-4" />
+                  Dashboard
+                </Link>
+              </li>
+              <li>
+                <Link to="/my-profile">
+                  <FiUser className="w-4 h-4" />
+                  Mon Profil
+                </Link>
+              </li>
+              <li>
+                <Link to="/portfolio">Mon Portfolio</Link>
+              </li>
+              <li>
+                <Link to="/trading">Trading virtuel</Link>
+              </li>
+              <li className="border-t border-base-300 mt-2">
+                <a onClick={logout} className="text-error">
+                  <FiLogOut className="w-4 h-4" />
+                  Déconnexion
+                </a>
+              </li>
+            </ul>
+          </div>
+        ) : (
+          /* Login/Register Buttons - Not Authenticated */
+          <div className="flex gap-2">
+            <Link to="/login" className="btn btn-ghost btn-sm">
+              Connexion
+            </Link>
+            <Link to="/register" className="btn btn-primary btn-sm">
+              S'inscrire
+            </Link>
+          </div>
+        )}
       </div>
     </header>
   );

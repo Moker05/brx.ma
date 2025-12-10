@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { verifyToken } from '../utils/jwt';
+import { verifyAccessToken } from '../utils/jwt';
 
 /**
  * Authentication middleware
@@ -26,7 +26,7 @@ export const authMiddleware = async (
     const token = authHeader.substring(7); // Remove "Bearer " prefix
 
     // Verify token
-    const decoded = verifyToken(token);
+    const decoded = verifyAccessToken(token);
 
     // Attach user to request
     req.user = {
@@ -57,7 +57,7 @@ export const authMiddleware = async (
  */
 export const optionalAuthMiddleware = async (
   req: Request,
-  res: Response,
+  _res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
@@ -65,7 +65,7 @@ export const optionalAuthMiddleware = async (
 
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
-      const decoded = verifyToken(token);
+      const decoded = verifyAccessToken(token);
 
       req.user = {
         userId: decoded.userId,

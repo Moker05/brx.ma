@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useUserProfile } from '../../hooks/useSocial';
 import { socialAPI } from '../../services/socialAPI';
 import { useAuth } from '../../context/AuthContext';

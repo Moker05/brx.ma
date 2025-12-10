@@ -1,5 +1,4 @@
 import { useThemeStore, THEMES } from '@/stores/themeStore';
-import type { ThemeName } from '@/stores/themeStore';
 
 /**
  * Hook to access and control the theme

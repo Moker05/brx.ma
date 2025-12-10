@@ -1,4 +1,4 @@
-import React from 'react';
+// React default import not required with the automatic JSX runtime
 import type { Post } from '../../services/socialAPI';
 import { UserAvatar } from './UserAvatar';
 import { TierBadge } from './TierBadge';

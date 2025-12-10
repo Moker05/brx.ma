@@ -1,326 +1,251 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { AdvancedChart } from '../../components/charts/AdvancedChart';
-import { TradeModal } from '../../components/trading/TradeModal';
-import { getCryptoMarkets, convertToChartData } from '../../services/coinGeckoAPI';
-import type { CryptoMarket } from '../../services/coinGeckoAPI';
-import { FiTrendingUp, FiTrendingDown, FiShoppingCart, FiDollarSign } from 'react-icons/fi';
+import { useMemo, useState, useEffect } from 'react';
+import { coinGeckoToTradingView, getCryptoCategory } from '../../data/crypto-tradingview-mapping';
+import { useCryptoMarkets } from '../../hooks/useCrypto';
+import TradingViewChart from '../../components/charts/TradingViewChart';
+import useDebounce from '../../hooks/useDebounce';
+
+const categoryPerformance = [
+  { name: 'Layer 1', change: 2.45 },
+  { name: 'DeFi', change: -1.23 },
+  { name: 'Metaverse', change: 3.67 },
+  { name: 'Layer 2', change: 1.89 },
+  { name: 'Payment', change: 0.56 },
+];
+
+const formatChange = (value: number) => `${value > 0 ? '+' : ''}${value.toFixed(2)}%`;
 
 export const Crypto = () => {
-  const [selectedCrypto, setSelectedCrypto] = useState('bitcoin');
-  const [timeframe, setTimeframe] = useState<1 | 7 | 30 | 365>(30);
-  const [tradeModalOpen, setTradeModalOpen] = useState(false);
-  const [tradeType, setTradeType] = useState<'BUY' | 'SELL'>('BUY');
-
-  // Fetch crypto markets list
-  const {
-    data: markets,
-    isLoading: marketsLoading,
-    error: marketsError,
-    refetch: refetchMarkets,
-  } = useQuery({
-    queryKey: ['cryptoMarkets'],
-    queryFn: () => getCryptoMarkets('usd', 20, 1),
-    refetchInterval: 60000, // Refresh every minute
+  const [query, setQuery] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
+  const [selectedCrypto, setSelectedCrypto] = useState<{
+    ticker: string;
+    name: string;
+    category: string;
+    tradingViewSymbol: string;
+  } | null>(null);
+  const [favorites, setFavorites] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem('brx_crypto_favorites');
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      return [];
+    }
   });
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
+  const [isLoadingChart, setIsLoadingChart] = useState(false);
 
-  // Fetch chart data for selected crypto
-  const {
-    data: chartData,
-    isLoading: chartLoading,
-    error: chartError,
-  } = useQuery({
-    queryKey: ['cryptoChart', selectedCrypto, timeframe],
-    queryFn: () => convertToChartData(selectedCrypto, timeframe),
-    enabled: !!selectedCrypto,
-  });
+  const { data: markets, isLoading: marketsLoading } = useCryptoMarkets(250, 1);
 
-  const selectedMarket = markets?.find((m) => m.id === selectedCrypto);
+  const mappedAssets = useMemo(() => {
+    if (!markets) return [];
+    return markets.map((m) => ({
+      ticker: m.symbol.toUpperCase(),
+      name: m.name,
+      category: getCryptoCategory(m.market_cap_rank),
+      tradingViewSymbol: coinGeckoToTradingView(m.id, m.symbol),
+    }));
+  }, [markets]);
 
-  const formatPrice = (price: number) => {
-    if (price < 0.01) return `$${price.toFixed(6)}`;
-    if (price < 1) return `$${price.toFixed(4)}`;
-    return `$${price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  };
+  const categoriesList = useMemo(() => Array.from(new Set(mappedAssets.map((c) => c.category))).sort(), [mappedAssets]);
 
-  const formatMarketCap = (cap: number) => {
-    if (cap >= 1e12) return `$${(cap / 1e12).toFixed(2)}T`;
-    if (cap >= 1e9) return `$${(cap / 1e9).toFixed(2)}B`;
-    if (cap >= 1e6) return `$${(cap / 1e6).toFixed(2)}M`;
-    return `$${cap.toLocaleString()}`;
-  };
+  const debouncedQuery = useDebounce(query, 300);
 
-  const handleOpenTrade = (type: 'BUY' | 'SELL') => {
-    setTradeType(type);
-    setTradeModalOpen(true);
-  };
+  const filtered = useMemo(() => {
+    return mappedAssets.filter((crypto) => {
+      const q = debouncedQuery.trim().toLowerCase();
+      const matchesQuery = q === '' || crypto.name.toLowerCase().includes(q) || crypto.ticker.toLowerCase().includes(q);
+      const matchesCategory = !categoryFilter || crypto.category === categoryFilter;
+      const matchesFavorite = !showFavoritesOnly || favorites.includes(crypto.ticker);
+      return matchesQuery && matchesCategory && matchesFavorite;
+    });
+  }, [debouncedQuery, categoryFilter, favorites, showFavoritesOnly, mappedAssets]);
 
-  const handleTradeSuccess = () => {
-    refetchMarkets();
-  };
+  useEffect(() => {
+    if (!selectedCrypto && mappedAssets.length > 0) {
+      setSelectedCrypto(mappedAssets[0]);
+    }
+  }, [mappedAssets, selectedCrypto]);
 
-  if (marketsError) {
-    return (
-      <div className="space-y-6">
-        <h1 className="text-3xl font-bold">Crypto-monnaies</h1>
-        <div className="alert alert-error">
-          <span>Erreur lors du chargement des données. Veuillez réessayer plus tard.</span>
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    try {
+      localStorage.setItem('brx_crypto_favorites', JSON.stringify(favorites));
+    } catch (e) {
+      // ignore
+    }
+  }, [favorites]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Crypto-monnaies</h1>
-        <p className="text-base-content/70 mt-1">Données en temps réel via CoinGecko API • Trading virtuel</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm uppercase tracking-[0.2em] text-primary/70 font-semibold">Cryptomonnaies</p>
+          <h1 className="text-3xl font-bold font-display">Marchés Crypto</h1>
+          <p className="text-base-content/70">Analyse en temps réel avec graphiques TradingView</p>
+        </div>
       </div>
 
-      {/* Stats */}
-      {selectedMarket && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="card bg-base-200 shadow-lg">
-            <div className="card-body">
-              <h3 className="text-sm font-medium text-base-content/70">Prix actuel</h3>
-              <p className="text-2xl font-bold">{formatPrice(selectedMarket.current_price)}</p>
-            </div>
-          </div>
-          <div className="card bg-base-200 shadow-lg">
-            <div className="card-body">
-              <h3 className="text-sm font-medium text-base-content/70">Variation 24h</h3>
-              <p
-                className={`text-2xl font-bold ${
-                  selectedMarket.price_change_percentage_24h >= 0 ? 'text-success' : 'text-error'
-                }`}
-              >
-                {selectedMarket.price_change_percentage_24h >= 0 ? '+' : ''}
-                {selectedMarket.price_change_percentage_24h.toFixed(2)}%
-              </p>
-            </div>
-          </div>
-          <div className="card bg-base-200 shadow-lg">
-            <div className="card-body">
-              <h3 className="text-sm font-medium text-base-content/70">Market Cap</h3>
-              <p className="text-2xl font-bold">{formatMarketCap(selectedMarket.market_cap)}</p>
-            </div>
-          </div>
-          <div className="card bg-base-200 shadow-lg">
-            <div className="card-body">
-              <h3 className="text-sm font-medium text-base-content/70">Volume 24h</h3>
-              <p className="text-2xl font-bold">{formatMarketCap(selectedMarket.total_volume)}</p>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Main Content: Sidebar + Chart */}
+      <div className="grid grid-cols-12 gap-4">
 
-      {/* Chart */}
-      <div className="card bg-base-200 shadow-lg">
-        <div className="card-body">
-          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-4">
-            <div>
-              {selectedMarket && (
-                <>
-                  <div className="flex items-center gap-3">
-                    <img src={selectedMarket.image} alt={selectedMarket.name} className="w-8 h-8" />
-                    <h2 className="card-title">
-                      {selectedMarket.name} ({selectedMarket.symbol.toUpperCase()})
-                    </h2>
+        {/* LEFT SIDEBAR: Crypto List */}
+        <div className="col-span-12 lg:col-span-3 space-y-3">
+
+          {/* Search & Filters */}
+          <div className="glass rounded-xl p-3 border border-white/5">
+            <input
+              className="input input-sm w-full mb-2"
+              placeholder="Rechercher..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+            />
+            <div className="flex items-center gap-2 mb-2">
+              <label className="cursor-pointer label">
+                <input type="checkbox" className="checkbox checkbox-sm mr-2" checked={showFavoritesOnly} onChange={(e) => setShowFavoritesOnly(e.target.checked)} />
+                <span className="label-text">Favoris seulement</span>
+              </label>
+              <div className="text-xs text-base-content/60 ml-auto">Favoris: {favorites.length}</div>
+            </div>
+            <select
+              className="select select-sm w-full"
+              value={categoryFilter ?? ''}
+              onChange={(e) => setCategoryFilter(e.target.value || null)}
+            >
+              <option value="">Toutes catégories</option>
+              {categoriesList.map((c) => (<option key={c} value={c}>{c}</option>))}
+            </select>
+          </div>
+
+          {/* Category Performance */}
+          <div className="glass rounded-xl p-3 border border-white/5">
+            <h3 className="text-sm font-semibold mb-2 flex items-center justify-between">
+              <span>Performance Catégories</span>
+              <span className="text-xs text-base-content/60">24h</span>
+            </h3>
+            <div className="space-y-1.5">
+              {categoryPerformance.map((cat) => {
+                const positive = cat.change >= 0;
+                const color = positive ? 'text-success' : 'text-error';
+                return (
+                  <div key={cat.name} className="flex items-center justify-between text-xs p-1.5 rounded bg-base-300/30">
+                    <span className="font-medium">{cat.name}</span>
+                    <span className={color}>{formatChange(cat.change)}</span>
                   </div>
-                  <p className="text-2xl font-bold mt-2">
-                    {formatPrice(selectedMarket.current_price)}
-                  </p>
-                </>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {/* Trading Buttons */}
-              <button
-                className="btn btn-success btn-sm gap-2"
-                onClick={() => handleOpenTrade('BUY')}
-                disabled={!selectedMarket}
-              >
-                <FiShoppingCart />
-                Acheter
-              </button>
-              <button
-                className="btn btn-error btn-sm gap-2"
-                onClick={() => handleOpenTrade('SELL')}
-                disabled={!selectedMarket}
-              >
-                <FiDollarSign />
-                Vendre
-              </button>
-
-              {/* Timeframe Buttons */}
-              <div className="divider divider-horizontal mx-0"></div>
-              <button
-                className={`btn btn-sm ${timeframe === 1 ? 'btn-primary' : 'btn-outline'}`}
-                onClick={() => setTimeframe(1)}
-              >
-                1J
-              </button>
-              <button
-                className={`btn btn-sm ${timeframe === 7 ? 'btn-primary' : 'btn-outline'}`}
-                onClick={() => setTimeframe(7)}
-              >
-                7J
-              </button>
-              <button
-                className={`btn btn-sm ${timeframe === 30 ? 'btn-primary' : 'btn-outline'}`}
-                onClick={() => setTimeframe(30)}
-              >
-                30J
-              </button>
-              <button
-                className={`btn btn-sm ${timeframe === 365 ? 'btn-primary' : 'btn-outline'}`}
-                onClick={() => setTimeframe(365)}
-              >
-                1A
-              </button>
+                );
+              })}
             </div>
           </div>
 
-          {chartLoading && (
-            <div className="flex justify-center items-center h-96">
-              <span className="loading loading-spinner loading-lg"></span>
-            </div>
-          )}
+          {/* Crypto List - Scrollable */}
+          <div className="glass rounded-xl p-3 border border-white/5">
+            <h3 className="text-sm font-semibold mb-2">
+              Cryptos ({filtered.length})
+            </h3>
+              <div className="space-y-1 max-h-[600px] overflow-y-auto scrollbar-thin">
+              {marketsLoading && !mappedAssets.length ? (
+                <div className="p-4 text-center text-sm">Chargement des marchés...</div>
+              ) : filtered.map((crypto) => {
+                const isSelected = selectedCrypto?.tradingViewSymbol === crypto.tradingViewSymbol;
+                const isFav = favorites.includes(crypto.ticker);
 
-          {chartError && (
-            <div className="alert alert-error">
-              <span>Erreur lors du chargement du graphique</span>
-            </div>
-          )}
-
-          {chartData && !chartLoading && (
-            <AdvancedChart data={chartData} height={500} symbol={selectedCrypto} />
-          )}
-        </div>
-      </div>
-
-      {/* Crypto List */}
-      <div className="card bg-base-200 shadow-lg">
-        <div className="card-body">
-          <h2 className="card-title mb-4">Top Crypto-monnaies</h2>
-
-          {marketsLoading && (
-            <div className="flex justify-center py-8">
-              <span className="loading loading-spinner loading-lg"></span>
-            </div>
-          )}
-
-          {markets && !marketsLoading && (
-            <div className="overflow-x-auto">
-              <table className="table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Nom</th>
-                    <th className="text-right">Prix</th>
-                    <th className="text-right">24h</th>
-                    <th className="text-right">7j</th>
-                    <th className="text-right">Market Cap</th>
-                    <th className="text-right">Volume</th>
-                    <th className="text-center">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {markets.map((crypto: CryptoMarket) => (
-                    <tr
-                      key={crypto.id}
-                      className={`hover ${
-                        selectedCrypto === crypto.id ? 'bg-primary/20' : ''
+                return (
+                  <div key={crypto.tradingViewSymbol} className="w-full">
+                    <div
+                      onClick={() => {
+                        setSelectedCrypto(crypto);
+                        setIsLoadingChart(true);
+                        try {
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        } catch (e) {
+                          // ignore
+                        }
+                      }}
+                      className={`w-full text-left p-2.5 rounded-lg transition-all cursor-pointer ${
+                        isSelected
+                          ? 'bg-primary/20 border-l-4 border-primary shadow-sm'
+                          : 'bg-base-300/30 hover:bg-base-300/50 border-l-4 border-transparent'
                       }`}
                     >
-                      <td className="font-bold">{crypto.market_cap_rank}</td>
-                      <td
-                        className="cursor-pointer"
-                        onClick={() => setSelectedCrypto(crypto.id)}
-                      >
-                        <div className="flex items-center gap-3">
-                          <img src={crypto.image} alt={crypto.name} className="w-6 h-6" />
-                          <div>
-                            <div className="font-bold">{crypto.name}</div>
-                            <div className="text-sm opacity-50">{crypto.symbol.toUpperCase()}</div>
-                          </div>
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="font-semibold text-sm truncate">{crypto.ticker}</div>
+                          <div className="text-xs text-base-content/60 truncate">{crypto.name}</div>
                         </div>
-                      </td>
-                      <td className="text-right font-semibold">
-                        {formatPrice(crypto.current_price)}
-                      </td>
-                      <td className="text-right">
-                        <span
-                          className={`flex items-center justify-end gap-1 font-semibold ${
-                            crypto.price_change_percentage_24h >= 0 ? 'text-success' : 'text-error'
-                          }`}
-                        >
-                          {crypto.price_change_percentage_24h >= 0 ? (
-                            <FiTrendingUp />
-                          ) : (
-                            <FiTrendingDown />
+                        <div className="ml-2 flex-shrink-0 flex items-center gap-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setFavorites((prev) => prev.includes(crypto.ticker) ? prev.filter((t) => t !== crypto.ticker) : [...prev, crypto.ticker]);
+                            }}
+                            className={`btn btn-ghost btn-xs ${isFav ? 'text-warning' : ''}`}
+                            title={isFav ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+                          >
+                            {isFav ? '★' : '☆'}
+                          </button>
+                          {isSelected && (
+                            <div>
+                              <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                            </div>
                           )}
-                          {Math.abs(crypto.price_change_percentage_24h).toFixed(2)}%
-                        </span>
-                      </td>
-                      <td className="text-right">
-                        {crypto.price_change_percentage_7d_in_currency ? (
-                          <span
-                            className={`font-semibold ${
-                              crypto.price_change_percentage_7d_in_currency >= 0
-                                ? 'text-success'
-                                : 'text-error'
-                            }`}
-                          >
-                            {crypto.price_change_percentage_7d_in_currency >= 0 ? '+' : ''}
-                            {crypto.price_change_percentage_7d_in_currency.toFixed(2)}%
-                          </span>
-                        ) : (
-                          '-'
-                        )}
-                      </td>
-                      <td className="text-right">{formatMarketCap(crypto.market_cap)}</td>
-                      <td className="text-right">{formatMarketCap(crypto.total_volume)}</td>
-                      <td className="text-center">
-                        <div className="flex gap-2 justify-center">
-                          <button
-                            className="btn btn-success btn-xs"
-                            onClick={() => {
-                              setSelectedCrypto(crypto.id);
-                              handleOpenTrade('BUY');
-                            }}
-                          >
-                            Buy
-                          </button>
-                          <button
-                            className="btn btn-error btn-xs"
-                            onClick={() => {
-                              setSelectedCrypto(crypto.id);
-                              handleOpenTrade('SELL');
-                            }}
-                          >
-                            Sell
-                          </button>
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                      </div>
+                      <div className="mt-1">
+                        <span className="badge badge-ghost badge-xs">{crypto.category}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+        </div>
+
+        {/* CENTER & RIGHT: Chart */}
+        <div className="col-span-12 lg:col-span-9">
+
+          {/* Selected Crypto Info + Chart */}
+          {selectedCrypto && (
+            <div className="glass rounded-xl p-4 border border-white/5">
+              <div className="mb-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold">{selectedCrypto.name}</h2>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-sm text-base-content/60">{selectedCrypto.ticker}</span>
+                      <span className="badge badge-primary badge-sm">{selectedCrypto.category}</span>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button className="btn btn-sm btn-primary">Acheter</button>
+                    <button className="btn btn-sm btn-ghost">+ Portfolio</button>
+                  </div>
+                </div>
+              </div>
+
+              {/* TradingView Chart */}
+              <div className="bg-base-200/50 rounded-lg p-2 relative">
+                {isLoadingChart && (
+                  <div className="absolute inset-0 z-20 flex items-center justify-center bg-base-200/80 rounded-lg">
+                    <div className="text-center">
+                      <div className="loader mb-2" />
+                      <div className="text-sm">Chargement du graphique...</div>
+                    </div>
+                  </div>
+                )}
+                <TradingViewChart
+                  symbol={selectedCrypto.tradingViewSymbol}
+                  height={600}
+                  interval="D"
+                  theme="dark"
+                  onLoadingChange={(l) => setIsLoadingChart(Boolean(l))}
+                />
+              </div>
             </div>
           )}
+
         </div>
       </div>
-
-      {/* Trade Modal */}
-      <TradeModal
-        isOpen={tradeModalOpen}
-        onClose={() => setTradeModalOpen(false)}
-        crypto={selectedMarket || null}
-        type={tradeType}
-        onSuccess={handleTradeSuccess}
-      />
     </div>
   );
 };

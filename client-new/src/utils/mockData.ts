@@ -29,7 +29,6 @@ export const generateMockData = (days: number = 60): CandlestickDataWithVolume[]
     const trendChange = trend * basePrice * 0.001;
 
     const open = basePrice;
-    const direction = Math.random() > 0.5 ? 1 : -1;
     const close = basePrice + dailyChange + trendChange;
 
     // High and low with realistic spreads
