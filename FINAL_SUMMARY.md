@@ -171,4 +171,4 @@ BRX.MA est maintenant prêt pour :
 
 **Créé par**: Claude (Anthropic)
 **Version**: 1.0.0
-**License**: MIT
+**License**: Proprietary - All Rights Reserved
