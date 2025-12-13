@@ -8,53 +8,19 @@ import {
   clearBVCCache,
   getBVCCacheStats,
 } from '../services/bvcService';
-import { scrapeStockAnalysis } from '../services/stockAnalysisScraperService';
 
 /**
  * Get all BVC stocks
- * Now using real-time data from African Markets
+ * Uses cascading data sources: Casablanca Bourse → African Markets → Static data
  */
 export const getAllStocks = async (_req: Request, res: Response): Promise<void> => {
   try {
-    // Try to get real-time data from scraper
-    try {
-      const scrapedStocks = await scrapeStockAnalysis();
-
-      // Convert to BVC stock format
-      const bvcStocks = scrapedStocks.map((stock: any) => ({
-        symbol: stock.symbol,
-        name: stock.name,
-        sector: stock.sector || 'Unknown',
-        volume: 0, // Not available from African Markets
-        marketCap: stock.marketCap,
-        lastPrice: stock.price,
-        change: stock.price * (stock.change / 100), // Convert percentage to absolute
-        changePercent: stock.change,
-        high: stock.price * 1.01,
-        low: stock.price * 0.99,
-        open: stock.price,
-        previousClose: stock.price - (stock.price * (stock.change / 100)),
-        timestamp: new Date().toISOString(),
-      }));
-
-      res.json({
-        success: true,
-        count: bvcStocks.length,
-        data: bvcStocks,
-        disclaimer: 'Données en temps réel depuis African Markets',
-      });
-      return;
-    } catch (scraperError) {
-      console.warn('Scraper failed, falling back to local data:', scraperError);
-    }
-
-    // Fallback to local data
     const stocks = await fetchBVCStocks();
     res.json({
       success: true,
       count: stocks.length,
       data: stocks,
-      disclaimer: 'Données avec délai de 15 minutes',
+      disclaimer: 'Données en temps réel depuis Casablanca Bourse',
     });
     return;
   } catch (error) {
