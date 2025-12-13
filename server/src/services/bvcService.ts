@@ -5,7 +5,6 @@ import type {
   BVCMarketSummary,
   BVCSectorPerformance,
 } from '../types/bvc.types';
-import { getBVCStocksData } from '../data/bvc-stocks-data';
 import * as CasablancaBourseService from './casablancaBourseScraperService';
 import * as AfricanMarketsService from './africanMarketsScraperService';
 
@@ -101,12 +100,9 @@ export async function fetchBVCStocks(): Promise<BVCStock[]> {
     console.warn(`⚠️  African Markets scraper failed: ${error.message}`);
   }
 
-  // FALLBACK: Use static data
-  console.log('📊 Using static data (fallback)...');
-  const stocks = getBVCStocksData();
-  setCachedData(cacheKey, stocks);
-  console.log(`✅ FALLBACK: Loaded ${stocks.length} BVC stocks from static data`);
-  return stocks;
+  // NO FALLBACK - Return error instead of fake data
+  console.error('❌ All scrapers failed - no data available');
+  throw new Error('Unable to fetch BVC stocks: all data sources failed');
 }
 
 /**
@@ -164,29 +160,9 @@ export async function fetchBVCIndices(): Promise<BVCIndex[]> {
     console.warn(`⚠️  Casablanca Bourse indices scraper failed: ${error.message}`);
   }
 
-  // FALLBACK: Mock data
-  console.log('📊 Using mock indices data (fallback)...');
-  const mockIndices: BVCIndex[] = [
-    {
-      name: 'MASI',
-      code: 'MASI',
-      value: 13450.25,
-      change: 45.3,
-      changePercent: 0.34,
-      timestamp: new Date(),
-    },
-    {
-      name: 'MADEX',
-      code: 'MADEX',
-      value: 10850.75,
-      change: 35.2,
-      changePercent: 0.33,
-      timestamp: new Date(),
-    },
-  ];
-
-  setCachedData(cacheKey, mockIndices);
-  return mockIndices;
+  // NO FALLBACK - Return error instead of fake data
+  console.error('❌ Unable to fetch indices from Casablanca Bourse');
+  throw new Error('Unable to fetch BVC indices: scraper failed');
 }
 
 /**
