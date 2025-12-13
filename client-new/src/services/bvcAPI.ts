@@ -63,22 +63,27 @@ export const getBVCIndices = async (): Promise<BVCIndex[]> => {
   const response = await axios.get(`${API_URL}/bvc/indices`);
   const data = response.data.data;
 
-  // Convert the object structure to array of indices
+  // API now returns an array of indices directly
+  if (Array.isArray(data)) {
+    return data;
+  }
+
+  // Fallback: handle old object structure if needed
   return [
     {
       name: 'MASI',
       code: 'MASI',
-      value: data.masi.value,
-      change: data.masi.change,
-      changePercent: data.masi.change,
+      value: data.masi?.value || 0,
+      change: data.masi?.change || 0,
+      changePercent: data.masi?.changePercent || 0,
       timestamp: new Date().toISOString(),
     },
     {
       name: 'MSI 20',
       code: 'MSI20',
-      value: data.msi20.value,
-      change: data.msi20.change,
-      changePercent: data.msi20.change,
+      value: data.msi20?.value || 0,
+      change: data.msi20?.change || 0,
+      changePercent: data.msi20?.changePercent || 0,
       timestamp: new Date().toISOString(),
     },
   ];

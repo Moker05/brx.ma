@@ -10,15 +10,34 @@ export const Home = () => {
 
   const { data: indicesData } = useBVCIndices();
 
-  const stats = indicesData
+  // Extract MASI and MADEX from indices array
+  const masiIndex = indicesData?.find((idx: any) => idx.code === 'MASI');
+  const madexIndex = indicesData?.find((idx: any) => idx.code === 'MADEX');
+
+  const stats = indicesData && masiIndex
     ? [
-        { label: 'MASI', value: Number(indicesData.masi.value).toLocaleString(), change: indicesData.masi.change, description: 'Moroccan All Shares Index' },
-        { label: 'MSI20', value: Number(indicesData.msi20.value).toLocaleString(), change: indicesData.msi20.change, description: 'Morocco Stock Index 20' },
-        { label: 'Volume', value: indicesData.volume.value, change: indicesData.volume.change, description: "Volume échangé aujourd'hui" },
+        {
+          label: 'MASI',
+          value: Number(masiIndex.value).toLocaleString(),
+          change: masiIndex.changePercent,
+          description: 'Moroccan All Shares Index'
+        },
+        {
+          label: madexIndex ? 'MADEX' : 'MSI20',
+          value: madexIndex ? Number(madexIndex.value).toLocaleString() : '—',
+          change: madexIndex?.changePercent || 0,
+          description: madexIndex ? 'Moroccan Most Active Shares Index' : 'Morocco Stock Index 20'
+        },
+        {
+          label: 'Volume',
+          value: '—',
+          change: 0,
+          description: "Volume échangé aujourd'hui"
+        },
       ]
     : [
         { label: 'MASI', value: '—', change: 0, description: 'Moroccan All Shares Index' },
-        { label: 'MSI20', value: '—', change: 0, description: 'Morocco Stock Index 20' },
+        { label: 'MADEX', value: '—', change: 0, description: 'Moroccan Most Active Shares Index' },
         { label: 'Volume', value: '—', change: 0, description: "Volume échangé aujourd'hui" },
       ];
 
