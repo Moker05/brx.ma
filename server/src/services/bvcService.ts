@@ -6,6 +6,8 @@ import type {
   BVCSectorPerformance,
 } from '../types/bvc.types';
 import { getBVCStocksData } from '../data/bvc-stocks-data';
+import * as CasablancaBourseService from './casablancaBourseScraperService';
+import * as AfricanMarketsService from './africanMarketsScraperService';
 
 // Cache configuration
 const CACHE_TTL = 15 * 60 * 1000; // 15 minutes
@@ -31,7 +33,9 @@ function setCachedData(key: string, data: any): void {
 
 /**
  * Fetch all stocks from Bourse de Casablanca
- * Now using real BVC stocks data (50+ stocks)
+ * PRIMARY: Casablanca Bourse scraper
+ * BACKUP: African Markets scraper
+ * FALLBACK: Static data
  */
 export async function fetchBVCStocks(): Promise<BVCStock[]> {
   const cacheKey = 'bvc:stocks';
@@ -39,16 +43,70 @@ export async function fetchBVCStocks(): Promise<BVCStock[]> {
   if (cached) return cached;
 
   try {
-    // Real BVC stocks data with dynamic price variations
-    const stocks = getBVCStocksData();
+    // PRIMARY: Try Casablanca Bourse first
+    console.log('📊 Trying Casablanca Bourse scraper (primary)...');
+    const cbStocks = await CasablancaBourseService.scrapeCasablancaBourseStocks();
 
-    setCachedData(cacheKey, stocks);
-    console.log(`✅ Loaded ${stocks.length} BVC stocks with real data`);
-    return stocks;
-  } catch (error) {
-    console.error('Error fetching BVC stocks:', error);
-    return [];
+    if (cbStocks && cbStocks.length > 0) {
+      // Convert to BVCStock format
+      const stocks: BVCStock[] = cbStocks.map(stock => ({
+        symbol: stock.symbol,
+        name: stock.name,
+        price: stock.price,
+        lastPrice: stock.price * (1 - stock.changePercent / 100), // Calculate from change
+        change: stock.change,
+        changePercent: stock.changePercent,
+        volume: stock.volume,
+        marketCap: stock.marketCap,
+        sector: '', // Not provided by CB, could be enriched later
+        logoUrl: stock.logoUrl,
+        timestamp: new Date(),
+      }));
+
+      setCachedData(cacheKey, stocks);
+      console.log(`✅ PRIMARY: Loaded ${stocks.length} stocks from Casablanca Bourse`);
+      return stocks;
+    }
+  } catch (error: any) {
+    console.warn(`⚠️  Casablanca Bourse scraper failed: ${error.message}`);
   }
+
+  try {
+    // BACKUP: Try African Markets scraper
+    console.log('📊 Trying African Markets scraper (backup)...');
+    const amStocks = await AfricanMarketsService.scrapeAfricanMarkets();
+    // African Markets scraper already filters BVC stocks only, no need to filter again
+
+    if (amStocks && amStocks.length > 0) {
+      // Convert to BVCStock format
+      const stocks: BVCStock[] = amStocks.map(stock => ({
+        symbol: stock.symbol,
+        name: stock.name,
+        price: stock.price,
+        lastPrice: stock.price * (1 - (stock.change1D || 0) / 100),
+        change: stock.change1D || 0,
+        changePercent: stock.change1D || 0,
+        volume: 0, // Not provided by African Markets
+        marketCap: stock.marketCap,
+        sector: stock.sector || '',
+        logoUrl: '',
+        timestamp: new Date(),
+      }));
+
+      setCachedData(cacheKey, stocks);
+      console.log(`✅ BACKUP: Loaded ${stocks.length} stocks from African Markets`);
+      return stocks;
+    }
+  } catch (error: any) {
+    console.warn(`⚠️  African Markets scraper failed: ${error.message}`);
+  }
+
+  // FALLBACK: Use static data
+  console.log('📊 Using static data (fallback)...');
+  const stocks = getBVCStocksData();
+  setCachedData(cacheKey, stocks);
+  console.log(`✅ FALLBACK: Loaded ${stocks.length} BVC stocks from static data`);
+  return stocks;
 }
 
 /**
@@ -61,6 +119,8 @@ export async function fetchBVCStock(symbol: string): Promise<BVCStock | null> {
 
 /**
  * Fetch BVC indices (MASI, MADEX, etc.)
+ * PRIMARY: Casablanca Bourse scraper
+ * FALLBACK: Mock data
  */
 export async function fetchBVCIndices(): Promise<BVCIndex[]> {
   const cacheKey = 'bvc:indices';
@@ -68,32 +128,65 @@ export async function fetchBVCIndices(): Promise<BVCIndex[]> {
   if (cached) return cached;
 
   try {
-    // Mock data for now - will be replaced with real scraping
-    const mockIndices: BVCIndex[] = [
-      {
-        name: 'MASI',
-        code: 'MASI',
-        value: 13450.25,
-        change: 45.3,
-        changePercent: 0.34,
-        timestamp: new Date(),
-      },
-      {
-        name: 'MSI20',
-        code: 'MSI20',
-        value: 945.32,
-        change: 3.1,
-        changePercent: 0.33,
-        timestamp: new Date(),
-      },
-    ];
+    // PRIMARY: Try to get real market summary
+    console.log('📊 Fetching indices from Casablanca Bourse...');
+    const marketSummary = await CasablancaBourseService.getMarketSummary();
 
-    setCachedData(cacheKey, mockIndices);
-    return mockIndices;
-  } catch (error) {
-    console.error('Error fetching BVC indices:', error);
-    return [];
+    if (marketSummary && marketSummary.masi.value > 0) {
+      const indices: BVCIndex[] = [
+        {
+          name: 'MASI',
+          code: 'MASI',
+          value: marketSummary.masi.value,
+          change: marketSummary.masi.change,
+          changePercent: marketSummary.masi.changePercent,
+          timestamp: marketSummary.timestamp,
+        },
+      ];
+
+      // Add MADEX if available
+      if (marketSummary.madex && marketSummary.madex.value > 0) {
+        indices.push({
+          name: 'MADEX',
+          code: 'MADEX',
+          value: marketSummary.madex.value,
+          change: marketSummary.madex.change,
+          changePercent: marketSummary.madex.changePercent,
+          timestamp: marketSummary.timestamp,
+        });
+      }
+
+      setCachedData(cacheKey, indices);
+      console.log(`✅ Loaded ${indices.length} indices from Casablanca Bourse`);
+      return indices;
+    }
+  } catch (error: any) {
+    console.warn(`⚠️  Casablanca Bourse indices scraper failed: ${error.message}`);
   }
+
+  // FALLBACK: Mock data
+  console.log('📊 Using mock indices data (fallback)...');
+  const mockIndices: BVCIndex[] = [
+    {
+      name: 'MASI',
+      code: 'MASI',
+      value: 13450.25,
+      change: 45.3,
+      changePercent: 0.34,
+      timestamp: new Date(),
+    },
+    {
+      name: 'MADEX',
+      code: 'MADEX',
+      value: 10850.75,
+      change: 35.2,
+      changePercent: 0.33,
+      timestamp: new Date(),
+    },
+  ];
+
+  setCachedData(cacheKey, mockIndices);
+  return mockIndices;
 }
 
 /**
