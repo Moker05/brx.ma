@@ -1,0 +1,24 @@
+{
+  "name": "fabra-controle-video",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Vidéo promotionnelle FABRA CONTROLE (Remotion)",
+  "scripts": {
+    "dev": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts FabraControle out/fabra-controle.mp4",
+    "still": "remotion still src/index.ts FabraControle out/still.png --frame=90",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.530",
+    "@remotion/google-fonts": "4.0.530",
+    "@remotion/transitions": "4.0.530",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "remotion": "4.0.530"
+  },
+  "devDependencies": {
+    "@types/react": "^19.0.0",
+    "typescript": "^5.6.0"
+  }
+}
